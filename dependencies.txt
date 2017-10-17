@@ -1,1 +1,11 @@
-sudo apt-get install nasm xorriso qemu build-essential
+sudo apt-get install nasm xorriso qemu build-essential mtools
+
+In project folder run
+rustup override add nightly
+
+And install xargo with
+cargo install xargo
+
+You need rust-src which you can install with:
+rustup component add rust-src
+
