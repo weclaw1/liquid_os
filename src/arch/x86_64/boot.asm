@@ -4,32 +4,24 @@ extern long_mode_start
 section .text
 bits 32
 start:
+    ;stack pointer points to stack_top (stack grows from higher memory addresses to lower)
     mov esp, stack_top
+
+    ;check if the kernel is started by multiboot compliant header
     call check_multiboot
+
+    ;check if hardware is new enough to run our kernel
     call check_cpuid
     call check_long_mode
 
+    ;identity map first 1GB (512 X 2MB) of memory to our kernel
     call set_up_page_tables
     call enable_paging
 
-    ; load the 64-bit GDT
+    ; load the 64-bit Global Descriptor Table
     lgdt [gdt64.pointer]
 
     jmp gdt64.code:long_mode_start
-
-    mov word [0xb8000], 0x0248 ; H
-    mov word [0xb8002], 0x0265 ; e
-    mov word [0xb8004], 0x026c ; l
-    mov word [0xb8006], 0x026c ; l
-    mov word [0xb8008], 0x026f ; o
-    mov word [0xb800a], 0x022c ; ,
-    mov word [0xb800c], 0x0220 ;
-    mov word [0xb800e], 0x0277 ; w
-    mov word [0xb8010], 0x026f ; o
-    mov word [0xb8012], 0x0272 ; r
-    mov word [0xb8014], 0x026c ; l
-    mov word [0xb8016], 0x0264 ; d
-    mov word [0xb8018], 0x0221 ; !
     hlt
 
 ; Prints `ERR: ` and the given error code to screen and hangs.
@@ -86,7 +78,7 @@ check_cpuid:
     jmp error
 
 check_long_mode:
-    ; test if extended processor info in available
+    ; test if extended processor info is available
     mov eax, 0x80000000    ; implicit argument for cpuid
     cpuid                  ; get highest supported argument
     cmp eax, 0x80000001    ; it needs to be at least 0x80000001

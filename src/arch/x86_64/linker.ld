@@ -3,7 +3,7 @@ ENTRY(start)
 SECTIONS {
     . = 1M;
 
-    .boot :
+    .multiboot_header :
     {
         /* ensure that the multiboot header is at the beginning */
         *(.multiboot_header)
@@ -11,6 +11,16 @@ SECTIONS {
 
     .text :
     {
-        *(.text)
+        *(.text .text.*)
+    }
+
+    .data :
+    {
+        *(.data .data.*)
+    }
+
+    .bss :
+    {
+        *(.bss .bss.*)
     }
 }
