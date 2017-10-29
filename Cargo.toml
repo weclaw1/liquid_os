@@ -3,5 +3,9 @@ name = "weclaw_os"
 version = "0.1.0"
 authors = ["Robert Węcławski <r.weclawski@gmail.com>"]
 
+[dependencies]
+rlibc = "1.0"
+compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins" }
+
 [lib]
 crate-type = ["staticlib"]
