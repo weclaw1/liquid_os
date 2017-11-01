@@ -30,14 +30,14 @@ impl ColorCode {
 
 #[cfg(test)]
 mod tests {
-    use color::Color;
-    use color;
+    use color::{Color, ColorCode};
 
     #[test]
     fn colorcode() {
-        assert_eq!(color::colorcode(Color::Blue, Color::BrightMagenta), 0xD1);
-        assert_eq!(color::colorcode(Color::Yellow, Color::Red), 0x4E);
-        assert_eq!(color::colorcode(Color::DarkGray, Color::White), 0xF8);
+        let ColorCode(val) = ColorCode::new(Color::Blue, Color::Magenta);
+        assert_eq!(val, 0x51);
+        let ColorCode(val) = ColorCode::new(Color::Yellow, Color::Red);
+        assert_eq!(val, 0x4E);
     }
 
 }
