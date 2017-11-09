@@ -6,6 +6,7 @@ bits 32
 start:
     ;stack pointer points to stack_top (stack grows from higher memory addresses to lower)
     mov esp, stack_top
+    mov edi, ebx       ; Move Multiboot info pointer to edi
 
     ;check if the kernel is started by multiboot compliant header
     call check_multiboot
@@ -153,7 +154,7 @@ p3_table:
 p2_table:
     resb 4096
 stack_bottom:
-    resb 64
+    resb 4096 * 4
 stack_top:
 
 section .rodata
