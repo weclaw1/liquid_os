@@ -9,6 +9,7 @@ rlibc = "1.0"
 spin = "0.4.4"
 compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins" }
 vga_console = { path = "drivers/video/console/vga_console" }
+memory = { path = "memory" }
 
 [lib]
 crate-type = ["staticlib"]

@@ -13,7 +13,9 @@ pub mod externs;
 extern crate multiboot2;
 
 extern crate vga_console;
-use vga_console::color::{Color, ColorCode};
+
+extern crate memory;
+use memory::FrameAllocator;
 
 #[macro_use]
 mod kernel;
@@ -30,13 +32,36 @@ pub extern fn kmain(multiboot_information_address: usize) {
 
     kprintln!(console, "memory areas:");
     for area in memory_map_tag.memory_areas() {
-        kprintln!(console, "    start: 0x{:x}, end: 0x{:x}, length: 0x{:x}", area.base_addr, area.base_addr + area.length, area.length);
+        kprintln!(console, "  start: 0x{:x}, end: 0x{:x}, length: 0x{:x}", 
+                              area.base_addr, area.base_addr + area.length, area.length);
     }
 
     let elf_sections_tag = boot_info.elf_sections_tag().expect("Elf-sections tag required");
     
-    println!("kernel sections:");
+    // kprintln!(console, "kernel sections:");
+    // for section in elf_sections_tag.sections() {
+    //     kprintln!(console, "  addr: 0x{:x}, end_addr: 0x{:x}, size: 0x{:x}, flags: 0x{:x}", 
+    //                           section.addr, section.addr + section.size, section.size, section.flags);
+    // }
 
+    let kernel_start = elf_sections_tag.sections().map(|s| s.addr).min().unwrap();
+    let kernel_end = elf_sections_tag.sections().map(|s| s.addr + s.size).max().unwrap();
+
+    let multiboot_start = boot_info.start_address();
+    let multiboot_end = boot_info.end_address();
+
+    kprintln!(console, "kernel start: 0x{:x}, kernel end: 0x{:x}", kernel_start, kernel_end);
+    kprintln!(console, "multiboot start: 0x{:x}, multiboot end: 0x{:x}", multiboot_start, multiboot_end);
+
+    let mut frame_allocator = memory::BitmapFrameAllocator::new(unsafe {&mut memory::bitmap_frame_allocator::BITMAP},
+                                                                kernel_start as usize, kernel_end as usize, multiboot_start,
+                                                                multiboot_end, memory_map_tag.memory_areas());
+    for i in 0.. {
+        if let None = frame_allocator.allocate_frame() {
+            kprintln!(console, "allocated {} frames", i);
+            break;
+        }
+    }
     loop{
 
     }
