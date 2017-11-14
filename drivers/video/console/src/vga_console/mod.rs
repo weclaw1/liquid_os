@@ -1,13 +1,10 @@
-#![no_std]
+use super::volatile::Volatile;
 
 pub mod color;
 
-use color::{Color, ColorCode};
-
 use core::fmt;
 
-extern crate volatile;
-use volatile::Volatile;
+use self::color::{Color, ColorCode};
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]

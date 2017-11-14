@@ -1,5 +1,5 @@
 use core::fmt;
-use kernel::Console;
+use kernel::console::Console;
 
 #[macro_export]
 macro_rules! kprintln {

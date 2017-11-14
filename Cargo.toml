@@ -8,7 +8,7 @@ multiboot2 = "0.3.2"
 rlibc = "1.0"
 spin = "0.4.4"
 compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins" }
-vga_console = { path = "drivers/video/console/vga_console" }
+console = { path = "drivers/video/console" }
 memory = { path = "memory" }
 
 [lib]
