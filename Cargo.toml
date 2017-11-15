@@ -2,10 +2,10 @@
 name = "weclaw_os"
 version = "0.1.0"
 authors = ["Robert Węcławski <r.weclawski@gmail.com>"]
+build = "build.rs"
 
 [dependencies]
 multiboot2 = "0.3.2"
-rlibc = "1.0"
 spin = "0.4.4"
 compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins" }
 console = { path = "drivers/video/console" }

@@ -60,6 +60,7 @@ pub extern fn kmain(multiboot_information_address: usize) {
             break;
         }
     }
+    
     loop{
 
     }
