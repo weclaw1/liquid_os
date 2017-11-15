@@ -7,8 +7,8 @@ cache:
   - cargo
 
 install:
-  - cargo install xargo
-  - cargo install just
+  - which xargo || cargo install xargo
+  - which just || cargo install just
   - rustup component add rust-src
 
 script:
