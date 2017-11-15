@@ -2,7 +2,6 @@
 name = "weclaw_os"
 version = "0.1.0"
 authors = ["Robert Węcławski <r.weclawski@gmail.com>"]
-build = "build.rs"
 
 [dependencies]
 multiboot2 = "0.3.2"

@@ -1,11 +1,17 @@
+Dependencies:
+-nasm
+-ld
+-grub-mkrescue
+-xorriso
+-qemu-system-x86_64
+-cargo
+
+On Ubuntu you can run:
 sudo apt-get install nasm xorriso qemu build-essential mtools
 
 In project folder run
 rustup override add nightly
-
-And install xargo with
-cargo install xargo
-
-You need rust-src which you can install with:
 rustup component add rust-src
-
+rustup update nightly
+cargo install xargo
+cargo install just

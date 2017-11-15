@@ -30,7 +30,7 @@ impl ColorCode {
 
 #[cfg(test)]
 mod tests {
-    use color::{Color, ColorCode};
+    use vga_console::color::{Color, ColorCode};
 
     #[test]
     fn colorcode() {
