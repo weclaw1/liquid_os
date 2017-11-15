@@ -9,6 +9,7 @@ cache:
 install:
   - cargo install xargo
   - cargo install just
+  - rustup component add rust-src
 
 script:
   - just kernel
