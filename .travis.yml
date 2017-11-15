@@ -1,0 +1,24 @@
+language: rust
+
+rust:
+  - nightly
+
+cache:
+  - cargo
+
+install:
+  - cargo install xargo
+  - cargo install just
+
+script:
+  - just kernel
+  - just test
+
+addons:
+  apt:
+    packages:
+      - xorriso
+      - nasm
+      - qemu
+      - build-essential
+      - mtools
