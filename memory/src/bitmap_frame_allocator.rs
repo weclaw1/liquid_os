@@ -1,3 +1,4 @@
+use core;
 use core::mem;
 
 use super::{Frame, FrameAllocator, FrameIter, PAGE_SIZE};
@@ -13,38 +14,31 @@ pub static mut BITMAP: [usize; ARRAY_SIZE] = [0; ARRAY_SIZE];
 pub struct BitmapFrameAllocator<'a> {
     bitmap: &'a mut [usize; ARRAY_SIZE],
     second_scan: bool,
-    next_free_frame: Frame,
+    next_frame: Frame,
     last_frame: Frame,
 }
 
 impl<'a> FrameAllocator for BitmapFrameAllocator<'a> {
     fn allocate_frame(&mut self) -> Option<Frame> {
-        let result;
-        loop{
-            match self.next_free_frame == self.last_frame {
+        loop {
+            match self.next_frame >= self.last_frame {
                 false => {
-                    if self.frame_is_used(self.next_free_frame.number()) {
-                        self.next_free_frame = Frame{ number: self.next_free_frame.number() + 1 };
-                    } else {
-                        let frame = self.next_free_frame.clone();
-                        self.set_used(frame.number(), true);
-                        self.next_free_frame = Frame{ number: frame.number() + 1};
-                        result = Some(frame);
-                        break;
+                    let block_number = self.get_block_number(self.next_frame.number());
+                    let frame = self.find_free_frame_in_block(block_number);
+                    if frame.is_some() {
+                        return frame
                     }
                 },
                 true if !self.second_scan => {
                     self.second_scan = true;
-                    self.next_free_frame = Frame{ number: 0 };
+                    self.next_frame = Frame{ number: 0 };
                 },
                 true => {
                     self.second_scan = false;
-                    result = None;
-                    break;
+                    return None
                 }
             }
         }
-        result
     }
 
     fn deallocate_frame(&mut self, frame: Frame) {
@@ -61,7 +55,7 @@ impl<'a> BitmapFrameAllocator<'a> {
         let mut allocator = BitmapFrameAllocator {
             bitmap: bitmap,
             second_scan: false,
-            next_free_frame: Frame::containing_address(0),
+            next_frame: Frame::containing_address(0),
             last_frame: Frame::containing_address(0),
         };
 
@@ -77,6 +71,41 @@ impl<'a> BitmapFrameAllocator<'a> {
         } else {
             self.bitmap[index / BITS_PER_ITEM] &= !(1usize << (index % BITS_PER_ITEM));
         }
+    }
+
+    fn find_free_frame_in_block(&mut self, block_number: usize) -> Option<Frame> {
+        if self.block_is_used(block_number) {
+            self.next_frame = self.first_frame_in_block(block_number + 1);
+            None
+        } else {
+            while self.next_frame <= self.last_frame_in_block(block_number) {
+                if self.frame_is_used(self.next_frame.number()) {
+                    self.next_frame = Frame{ number: self.next_frame.number() + 1 };
+                } else {
+                    let frame = self.next_frame.clone();
+                    self.set_used(frame.number(), true);
+                    self.next_frame = Frame{ number: frame.number() + 1};
+                    return Some(frame)
+                }
+            }
+            None
+        }
+    }
+
+    fn first_frame_in_block(&self, block_number: usize) -> Frame {
+        Frame{ number: block_number * BITS_PER_ITEM }
+    }
+
+    fn last_frame_in_block(&self, block_number: usize) -> Frame {
+        Frame{ number: block_number * BITS_PER_ITEM + BITS_PER_ITEM - 1 }
+    }
+
+    fn get_block_number(&self, frame_number: usize) -> usize {
+        frame_number / BITS_PER_ITEM
+    }
+
+    fn block_is_used(&self, index: usize) -> bool {
+        self.bitmap[index] == core::usize::MAX
     }
 
     fn frame_is_used(&self, index: usize) -> bool {
