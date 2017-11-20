@@ -17,30 +17,22 @@ extern crate memory;
 #[macro_use]
 mod kernel;
 
-use memory::FrameAllocator;
 use kernel::console::Console;
+use kernel::memory::MemoryFrameAllocator;
+use memory::FrameAllocator;
 
 #[no_mangle]
 pub extern fn kmain(multiboot_information_address: usize) {
-    // ATTENTION: we have a very small stack and no guard page
     let console = Console::new();
 
     let boot_info = unsafe{ multiboot2::load(multiboot_information_address) };
     let memory_map_tag = boot_info.memory_map_tag().expect("Memory map tag required");
 
-    kprintln!(console, "memory areas:");
-    for area in memory_map_tag.memory_areas() {
-        kprintln!(console, "  start: 0x{:x}, end: 0x{:x}, length: 0x{:x}", 
-                              area.base_addr, area.base_addr + area.length, area.length);
-    }
+    kernel::memory::print_memory_areas(&console, memory_map_tag);
 
     let elf_sections_tag = boot_info.elf_sections_tag().expect("Elf-sections tag required");
     
-    // kprintln!(console, "kernel sections:");
-    // for section in elf_sections_tag.sections() {
-    //     kprintln!(console, "  addr: 0x{:x}, end_addr: 0x{:x}, size: 0x{:x}, flags: 0x{:x}", 
-    //                           section.addr, section.addr + section.size, section.size, section.flags);
-    // }
+    //kernel::memory::print_kernel_sections(&console, elf_sections_tag);
 
     let kernel_start = elf_sections_tag.sections().map(|s| s.addr).min().unwrap();
     let kernel_end = elf_sections_tag.sections().map(|s| s.addr + s.size).max().unwrap();
@@ -51,11 +43,10 @@ pub extern fn kmain(multiboot_information_address: usize) {
     kprintln!(console, "kernel start: 0x{:x}, kernel end: 0x{:x}", kernel_start, kernel_end);
     kprintln!(console, "multiboot start: 0x{:x}, multiboot end: 0x{:x}", multiboot_start, multiboot_end);
 
-    let mut frame_allocator = memory::BitmapFrameAllocator::new(unsafe {&mut memory::bitmap_frame_allocator::BITMAP},
-                                                                kernel_start as usize, kernel_end as usize, multiboot_start,
-                                                                multiboot_end, memory_map_tag.memory_areas());
+    let mut frame_allocator = MemoryFrameAllocator::new(kernel_start as usize, kernel_end as usize, multiboot_start,
+                                                  multiboot_end, memory_map_tag.memory_areas());
     for i in 0.. {
-        if let None = frame_allocator.allocate_frame() {
+        if let None = frame_allocator.mem_allocator.lock().allocate_frame() {
             kprintln!(console, "allocated {} frames", i);
             break;
         }
