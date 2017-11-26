@@ -3,8 +3,13 @@
 
 extern crate multiboot2;
 
+#[macro_use]
+extern crate bitflags;
+
 pub mod bitmap_frame_allocator;
 pub use bitmap_frame_allocator::*;
+
+use self::paging::PhysicalAddress;
 
 pub const PAGE_SIZE: usize = 4096;
 
@@ -22,7 +27,7 @@ impl Frame {
         Frame{ number: address / PAGE_SIZE }
     }
 
-    pub fn start_address(&self) -> usize {
+    pub fn start_address(&self) -> PhysicalAddress {
         self.number * PAGE_SIZE
     }
 

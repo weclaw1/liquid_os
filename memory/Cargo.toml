@@ -4,5 +4,5 @@ version = "0.1.0"
 authors = ["Robert Węcławski <r.weclawski@gmail.com>"]
 
 [dependencies]
-bitflags = "1.0"
+bitflags = "1.0.1"
 multiboot2 = "0.3.2"
