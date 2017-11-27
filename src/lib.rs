@@ -43,7 +43,7 @@ pub extern fn kmain(multiboot_information_address: usize) {
     kprintln!(console, "kernel start: 0x{:x}, kernel end: 0x{:x}", kernel_start, kernel_end);
     kprintln!(console, "multiboot start: 0x{:x}, multiboot end: 0x{:x}", multiboot_start, multiboot_end);
 
-    let mut frame_allocator = MemoryFrameAllocator::new(kernel_start as usize, kernel_end as usize, multiboot_start,
+    let frame_allocator = MemoryFrameAllocator::new(kernel_start as usize, kernel_end as usize, multiboot_start,
                                                   multiboot_end, memory_map_tag.memory_areas());
     for i in 0.. {
         if let None = frame_allocator.mem_allocator.lock().allocate_frame() {

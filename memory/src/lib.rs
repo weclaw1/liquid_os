@@ -1,5 +1,6 @@
 #![no_std]
 #![feature(const_size_of)]
+#![feature(unique)]
 
 extern crate multiboot2;
 
@@ -9,7 +10,9 @@ extern crate bitflags;
 pub mod bitmap_frame_allocator;
 pub use bitmap_frame_allocator::*;
 
-use self::paging::PhysicalAddress;
+pub mod x86_64;
+
+use x86_64::paging::PhysicalAddress;
 
 pub const PAGE_SIZE: usize = 4096;
 

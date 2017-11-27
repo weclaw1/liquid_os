@@ -1,4 +1,4 @@
-use memory::Frame;
+use ::Frame;
 
 pub struct Entry(u64);
 
@@ -16,7 +16,7 @@ impl Entry {
     }
 
     pub fn pointed_frame(&self) -> Option<Frame> {
-        if self.flags().contains(PRESENT) {
+        if self.flags().contains(EntryFlags::PRESENT) {
             Some(Frame::containing_address(
                 self.0 as usize & 0x000fffff_fffff000
             ))
