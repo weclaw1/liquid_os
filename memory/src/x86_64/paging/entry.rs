@@ -29,6 +29,15 @@ impl Entry {
         assert!(frame.start_address() & !0x000fffff_fffff000 == 0);
         self.0 = (frame.start_address() as u64) | flags.bits();
     }
+
+    pub fn inner_count(&self) -> usize {
+        (self.0 as usize & 0x3ff00000_00000000) >> 52
+    }
+
+    pub fn set_inner_count(&mut self, count: usize) {
+        assert!(count <= 512);
+        self.0 = ((self.0 as usize & 0xc00fffff_ffffffff) | (count << 52)) as u64;
+    }
 }
 
 bitflags! {

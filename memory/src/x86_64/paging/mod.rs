@@ -87,13 +87,36 @@ impl ActivePageTable {
 
     pub fn map_to<A>(&mut self, page: Page, frame: Frame, flags: EntryFlags, allocator: &mut A)
         where A: FrameAllocator
-    {
-        let mut p3 = self.p4_mut().next_table_create(page.p4_index(), allocator);
-        let mut p2 = p3.next_table_create(page.p3_index(), allocator);
-        let mut p1 = p2.next_table_create(page.p2_index(), allocator);
+    {   
+        let (new_entry_p3, new_entry_p2) =
+        {
+            let (p3, _) = self.p4_mut().next_table_create(page.p4_index(), allocator);
+        
+            let (p2, new_entry_p3) = p3.next_table_create(page.p3_index(), allocator);
 
-        assert!(p1[page.p1_index()].is_unused());
-        p1[page.p1_index()].set(frame, flags | EntryFlags::PRESENT);
+            let (p1, new_entry_p2) = p2.next_table_create(page.p2_index(), allocator);
+
+            assert!(p1[page.p1_index()].is_unused());
+            p1[page.p1_index()].set(frame, flags | EntryFlags::PRESENT);
+            (new_entry_p3, new_entry_p2)
+        };
+
+        if new_entry_p3 {
+            let p4 = self.p4_mut();
+            let current_count = p4[page.p4_index()].inner_count();
+            p4[page.p4_index()].set_inner_count(current_count+1);
+        }
+
+        if new_entry_p2 {
+            let p3 = self.p4_mut().next_table_mut(page.p4_index()).unwrap();
+            let current_count = p3[page.p3_index()].inner_count();
+            p3[page.p3_index()].set_inner_count(current_count+1);
+        }
+
+        let p2 = self.p4_mut().next_table_mut(page.p4_index())
+                              .and_then(|p3| p3.next_table_mut(page.p3_index())).unwrap();
+        let current_count = p2[page.p2_index()].inner_count();
+        p2[page.p2_index()].set_inner_count(current_count+1);
     }
 
     pub fn map<A>(&mut self, page: Page, flags: EntryFlags, allocator: &mut A)
@@ -115,15 +138,65 @@ impl ActivePageTable {
     {
         assert!(self.translate(page.start_address()).is_some());
 
-        let p1 = self.p4_mut()
-                     .next_table_mut(page.p4_index())
-                     .and_then(|p3| p3.next_table_mut(page.p3_index()))
-                     .and_then(|p2| p2.next_table_mut(page.p2_index()))
-                     .expect("mapping code does not support huge pages");
-        let frame = p1[page.p1_index()].pointed_frame().unwrap();
-        p1[page.p1_index()].set_unused();
-        // TODO free p(1,2,3) table if empty
-        allocator.deallocate_frame(frame);
+        {
+            let p1 = self.p4_mut()
+                         .next_table_mut(page.p4_index())
+                         .and_then(|p3| p3.next_table_mut(page.p3_index()))
+                         .and_then(|p2| p2.next_table_mut(page.p2_index()))
+                         .expect("mapping code does not support huge pages");
+            let frame = p1[page.p1_index()].pointed_frame().unwrap();
+            p1[page.p1_index()].set_unused();
+            allocator.deallocate_frame(frame);
+        }
+
+        let p2_freed = {
+            let p2 = self.p4_mut()
+                         .next_table_mut(page.p4_index())
+                         .and_then(|p3| p3.next_table_mut(page.p3_index()))
+                         .unwrap();
+            let current_count = p2[page.p2_index()].inner_count();
+            if (current_count - 1) == 0 {
+                let frame = p2[page.p2_index()].pointed_frame().unwrap();
+                p2[page.p2_index()].set_unused();
+                allocator.deallocate_frame(frame);
+                true
+            } else {
+                p2[page.p2_index()].set_inner_count(current_count - 1);
+                false
+            }
+        };
+
+        if p2_freed {
+            let p3_freed = {
+                let p3 = self.p4_mut()
+                             .next_table_mut(page.p4_index())
+                             .unwrap();
+                let current_count = p3[page.p3_index()].inner_count();
+                if (current_count - 1) == 0 {
+                    let frame = p3[page.p3_index()].pointed_frame().unwrap();
+                    p3[page.p3_index()].set_unused();
+                    allocator.deallocate_frame(frame);
+                    true
+                } else {
+                    p3[page.p3_index()].set_inner_count(current_count - 1);
+                    false
+                }
+            };
+
+            if p3_freed {
+                let p4 = self.p4_mut();
+
+                let current_count = p4[page.p4_index()].inner_count();
+                if (current_count - 1) == 0 {
+                    let frame = p4[page.p4_index()].pointed_frame().unwrap();
+                    p4[page.p4_index()].set_unused();
+                    allocator.deallocate_frame(frame);
+                } else {
+                    p4[page.p4_index()].set_inner_count(current_count - 1);
+                }
+            } 
+
+        }
     }
 
 
