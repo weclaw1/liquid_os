@@ -1,8 +1,8 @@
 arch = "x86_64"
 kernel = "build/kernel-" + arch + ".bin"
 iso = "build/os-" + arch + ".iso"
-target = arch + "-weclaw_os"
-rust_os = "target/" + target + "/debug/libweclaw_os.a"
+target = arch + "-liquid_os"
+rust_os = "target/" + target + "/debug/libliquid_os.a"
 
 linker_script = "src/arch/" + arch + "/boot/layout.ld"
 grub_cfg = "src/arch/" + arch + "/boot/grub.cfg"
