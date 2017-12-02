@@ -6,3 +6,4 @@ authors = ["Robert Węcławski <r.weclawski@gmail.com>"]
 [dependencies]
 bitflags = "1.0.1"
 multiboot2 = "0.3.2"
+x86_64 = "0.1.2"

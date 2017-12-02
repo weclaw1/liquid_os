@@ -4,6 +4,8 @@
 
 extern crate multiboot2;
 
+extern crate x86_64 as extern_x86_64;
+
 #[macro_use]
 extern crate bitflags;
 

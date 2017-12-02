@@ -3,6 +3,9 @@ mod table;
 use ::PAGE_SIZE;
 use ::Frame;
 
+use extern_x86_64;
+use extern_x86_64::instructions::tlb;
+
 use self::table::{Table, Level4};
 use core::ptr::Unique;
 
@@ -133,7 +136,7 @@ impl ActivePageTable {
         self.map_to(page, frame, flags, allocator)
     }
 
-    fn unmap<A>(&mut self, page: Page, allocator: &mut A)
+    pub fn unmap<A>(&mut self, page: Page, allocator: &mut A)
         where A: FrameAllocator
     {
         assert!(self.translate(page.start_address()).is_some());
@@ -148,6 +151,8 @@ impl ActivePageTable {
             p1[page.p1_index()].set_unused();
             allocator.deallocate_frame(frame);
         }
+
+        tlb::flush(extern_x86_64::VirtualAddress(page.start_address()));
 
         let p2_freed = {
             let p2 = self.p4_mut()
@@ -210,7 +215,7 @@ impl Page {
         Page { number: address / PAGE_SIZE }
     }
 
-    fn start_address(&self) -> usize {
+    pub fn start_address(&self) -> usize {
         self.number * PAGE_SIZE
     }
 
@@ -227,3 +232,4 @@ impl Page {
         (self.number >> 0) & 0o777
     }
 }
+
