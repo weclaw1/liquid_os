@@ -52,7 +52,7 @@ pub extern fn kmain(multiboot_information_address: usize) {
     //     }
     // }
 
-    kernel::memory::test_paging(&console, &mut *frame_allocator.allocator.lock());
+    //kernel::memory::test_paging(&console, &mut *frame_allocator.allocator.lock());
     
     loop{
 
