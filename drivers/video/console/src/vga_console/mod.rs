@@ -3,6 +3,7 @@ use super::volatile::Volatile;
 pub mod color;
 
 use core::fmt;
+use core::ptr::Unique;
 
 use self::color::{Color, ColorCode};
 
@@ -21,15 +22,15 @@ pub struct Buffer {
 }
 
 pub struct VgaConsole {
-    buffer: *mut Buffer,
+    buffer: Unique<Buffer>,
     color_code: ColorCode,
     position: usize,
 }
 
 impl VgaConsole {
-    pub fn new(buffer: *mut Buffer) -> VgaConsole {
+    pub const fn new(buffer: *mut Buffer) -> VgaConsole {
         VgaConsole {
-            buffer: buffer,
+            buffer: unsafe { Unique::new_unchecked(buffer) },
             color_code: ColorCode::new(Color::Green, Color::Black),
             position: 0,
         }
@@ -58,7 +59,7 @@ impl VgaConsole {
     }
 
     fn buffer(&mut self) -> &mut Buffer {
-        unsafe{ self.buffer.as_mut().unwrap() }
+        unsafe{ self.buffer.as_mut() }
     }
 
     fn scroll(&mut self) {

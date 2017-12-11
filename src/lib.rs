@@ -11,28 +11,26 @@ extern crate multiboot2;
 /// External functions
 pub mod externs;
 
+#[macro_use]
 extern crate console;
 extern crate memory;
 
-#[macro_use]
+use memory::bitmap_frame_allocator::{BitmapFrameAllocator, BITMAP};
+use spin::Mutex;
+
 mod kernel;
 
-use kernel::console::Console;
-use kernel::memory::MemoryFrameAllocator;
-use memory::FrameAllocator;
 
 #[no_mangle]
 pub extern fn kmain(multiboot_information_address: usize) {
-    let console = Console::new();
-
     let boot_info = unsafe{ multiboot2::load(multiboot_information_address) };
     let memory_map_tag = boot_info.memory_map_tag().expect("Memory map tag required");
 
-    kernel::memory::print_memory_areas(&console, memory_map_tag);
+    kernel::memory::print_memory_areas(memory_map_tag);
 
     let elf_sections_tag = boot_info.elf_sections_tag().expect("Elf-sections tag required");
     
-    //kernel::memory::print_kernel_sections(&console, elf_sections_tag);
+    //kernel::memory::print_kernel_sections(elf_sections_tag);
 
     let kernel_start = elf_sections_tag.sections().map(|s| s.addr).min().unwrap();
     let kernel_end = elf_sections_tag.sections().map(|s| s.addr + s.size).max().unwrap();
@@ -40,20 +38,15 @@ pub extern fn kmain(multiboot_information_address: usize) {
     let multiboot_start = boot_info.start_address();
     let multiboot_end = boot_info.end_address();
 
-    kprintln!(console, "kernel start: 0x{:x}, kernel end: 0x{:x}", kernel_start, kernel_end);
-    kprintln!(console, "multiboot start: 0x{:x}, multiboot end: 0x{:x}", multiboot_start, multiboot_end);
+    println!("kernel start: 0x{:x}, kernel end: 0x{:x}", kernel_start, kernel_end);
+    println!("multiboot start: 0x{:x}, multiboot end: 0x{:x}", multiboot_start, multiboot_end);
 
-    let mut frame_allocator = MemoryFrameAllocator::new(kernel_start as usize, kernel_end as usize, multiboot_start,
-                                                        multiboot_end, memory_map_tag.memory_areas());
-    // for i in 0.. {
-    //     if let None = frame_allocator.mem_allocator.lock().allocate_frame() {
-    //         kprintln!(console, "allocated {} frames", i);
-    //         break;
-    //     }
-    // }
+    let frame_allocator = Mutex::new(BitmapFrameAllocator::new(unsafe {&mut BITMAP}, 
+                                         kernel_start as usize, kernel_end as usize, multiboot_start, multiboot_end, memory_map_tag.memory_areas()));
 
-    //kernel::memory::test_paging(&console, &mut *frame_allocator.allocator.lock());
-    
+    memory::remap_the_kernel(&mut *frame_allocator.lock(), boot_info);
+    println!("It did not crash!");
+
     loop{
 
     }
@@ -63,8 +56,7 @@ pub extern fn kmain(multiboot_information_address: usize) {
 #[lang = "panic_fmt"]
 #[no_mangle]
 pub extern fn panic_fmt(fmt: core::fmt::Arguments, file: &'static str, line: u32) -> ! {
-    let console = Console::new();
-    kprintln!(console, "\nPANIC in {} at line {}:", file, line);
-    kprintln!(console, "{}", fmt);
+    println!("\nPANIC in {} at line {}:", file, line);
+    println!("{}", fmt);
     loop{}
 }

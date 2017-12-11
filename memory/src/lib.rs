@@ -3,16 +3,19 @@
 #![feature(unique)]
 
 extern crate multiboot2;
-
 extern crate x86_64 as extern_x86_64;
 
 #[macro_use]
 extern crate bitflags;
 
+#[macro_use]
+extern crate console;
+
 pub mod bitmap_frame_allocator;
 pub use bitmap_frame_allocator::*;
 
 pub mod x86_64;
+pub use x86_64::paging::remap_the_kernel;
 
 use x86_64::paging::PhysicalAddress;
 
@@ -43,7 +46,7 @@ impl Frame {
         }
     }
 
-    pub fn clone(&self) -> Frame {
+    fn clone(&self) -> Frame {
         Frame {
             number: self.number
         }

@@ -3,21 +3,16 @@ ENTRY(start)
 SECTIONS {
     . = 1M;
 
-    .multiboot_header :
-    {
+    .rodata : {
         /* ensure that the multiboot header is at the beginning */
         KEEP(*(.multiboot_header))
+        *(.rodata .rodata.*)
         . = ALIGN(4K);
     }
 
     .text :
     {
         *(.text .text.*)
-        . = ALIGN(4K);
-    }
-
-    .rodata : {
-        *(.rodata .rodata.*)
         . = ALIGN(4K);
     }
 
@@ -47,6 +42,11 @@ SECTIONS {
 
     .data.rel.ro : ALIGN(4K) {
         *(.data.rel.ro.local*) *(.data.rel.ro .data.rel.ro.*)
+        . = ALIGN(4K);
+    }
+
+    .gcc_except_table : ALIGN(4K) {
+        *(.gcc_except_table)
         . = ALIGN(4K);
     }
 
