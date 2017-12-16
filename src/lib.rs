@@ -7,6 +7,7 @@
 extern crate spin;
 extern crate compiler_builtins;
 extern crate multiboot2;
+extern crate x86_64;
 
 /// External functions
 pub mod externs;
@@ -14,9 +15,6 @@ pub mod externs;
 #[macro_use]
 extern crate console;
 extern crate memory;
-
-use memory::bitmap_frame_allocator::{BitmapFrameAllocator, BITMAP};
-use spin::Mutex;
 
 mod kernel;
 
@@ -41,10 +39,11 @@ pub extern fn kmain(multiboot_information_address: usize) {
     println!("kernel start: 0x{:x}, kernel end: 0x{:x}", kernel_start, kernel_end);
     println!("multiboot start: 0x{:x}, multiboot end: 0x{:x}", multiboot_start, multiboot_end);
 
-    let frame_allocator = Mutex::new(BitmapFrameAllocator::new(unsafe {&mut BITMAP}, 
-                                         kernel_start as usize, kernel_end as usize, multiboot_start, multiboot_end, memory_map_tag.memory_areas()));
+    unsafe {memory::init(kernel_start as usize, kernel_end as usize, multiboot_start, multiboot_end, memory_map_tag.memory_areas());}
 
-    memory::remap_the_kernel(&mut *frame_allocator.lock(), boot_info);
+    kernel::memory::enable_nxe_bit();
+    kernel::memory::enable_write_protect_bit();
+    memory::remap_the_kernel(boot_info);
     println!("It did not crash!");
 
     loop{

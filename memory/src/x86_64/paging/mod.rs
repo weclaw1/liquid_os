@@ -4,6 +4,7 @@ mod temporary_page;
 mod mapper;
 use ::PAGE_SIZE;
 use ::Frame;
+use ::allocate_frame;
 
 use multiboot2::BootInformation;
 
@@ -97,7 +98,7 @@ impl ActivePageTable {
 
             // overwrite recursive mapping
             self.p4_mut()[511].set(table.p4_frame.clone(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
-            tlb::flush_all();
+            self.flush_all();
 
             // execute f in the new context
             f(self);
@@ -105,7 +106,7 @@ impl ActivePageTable {
             // restore recursive mapping to original p4 table
             p4_table[511].set(backup, EntryFlags::PRESENT | EntryFlags::WRITABLE);
 
-            tlb::flush_all();
+            self.flush_all();
         }
 
         temporary_page.unmap(self);
@@ -121,6 +122,14 @@ impl ActivePageTable {
             control_regs::cr3_write(extern_x86_64::PhysicalAddress(new_table.p4_frame.start_address() as u64));
         }
         old_table
+    }
+
+    pub fn flush(&mut self, page: Page) {
+        tlb::flush(extern_x86_64::VirtualAddress(page.start_address()));
+    }
+
+    pub fn flush_all(&mut self) {
+        tlb::flush_all();
     }
 
 }
@@ -148,15 +157,12 @@ impl InactivePageTable {
 
 }
 
-pub fn remap_the_kernel<A>(allocator: &mut A, boot_info: &BootInformation)
-    where A: FrameAllocator
-{
-    let mut temporary_page = TemporaryPage::new(Page { number: 0xcafebabe },
-        allocator);
+pub fn remap_the_kernel(boot_info: &BootInformation) {
+    let mut temporary_page = TemporaryPage::new(Page { number: 0xcafebabe });
 
     let mut active_table = unsafe { ActivePageTable::new() };
     let mut new_table = {
-        let frame = allocator.allocate_frame().expect("no more frames");
+        let frame = allocate_frame().expect("no more frames");
         InactivePageTable::new(frame, &mut active_table, &mut temporary_page)
     };
 
@@ -169,23 +175,43 @@ pub fn remap_the_kernel<A>(allocator: &mut A, boot_info: &BootInformation)
                 // section is not loaded to memory
                 continue;
             }
-            assert!(section.start_address() % PAGE_SIZE == 0,
-                    "sections need to be page aligned");
+            assert!(section.start_address() % PAGE_SIZE == 0, "sections need to be page aligned");
 
-            println!("mapping section at addr: {:#x}, size: {:#x}",
-                section.addr, section.size);
+            println!("mapping section at addr: {:#x}, size: {:#x}", section.addr, section.size);
 
-            let flags = EntryFlags::WRITABLE; // TODO use real section flags
+            let flags = EntryFlags::from_elf_section_flags(section);
 
             let start_frame = Frame::containing_address(section.start_address());
             let end_frame = Frame::containing_address(section.end_address() - 1);
 
             for frame in Frame::range_inclusive(start_frame, end_frame) {
-                mapper.identity_map(frame, flags, allocator);
+                let result = mapper.identity_map(frame, flags);
+                // The flush can be ignored as this is not the active table. See later active_table.switch
+                unsafe {result.ignore();}
             }
+        }
+        // identity map the VGA text buffer
+        let vga_buffer_frame = Frame::containing_address(0xb8000);
+        let result = mapper.identity_map(vga_buffer_frame, EntryFlags::WRITABLE);
+        // The flush can be ignored as this is not the active table. See later active_table.switch
+        unsafe {result.ignore();}
+
+        // identity map the multiboot info structure
+        let multiboot_start = Frame::containing_address(boot_info.start_address());
+        let multiboot_end = Frame::containing_address(boot_info.end_address() - 1);
+        for frame in Frame::range_inclusive(multiboot_start, multiboot_end) {
+            let result = mapper.identity_map(frame, EntryFlags::PRESENT);
+            // The flush can be ignored as this is not the active table. See later active_table.switch
+            unsafe {result.ignore();}
         }
     });
 
-    //let old_table = active_table.switch(new_table);
-    //println!("NEW TABLE!!!");
+    let old_table = active_table.switch(new_table);
+    println!("NEW TABLE!!!");
+
+    // turn the old p4 page into a guard page
+    let old_p4_page = Page::containing_address(old_table.p4_frame.start_address());
+    let result = active_table.unmap(old_p4_page);
+    result.flush(&mut active_table);
+    println!("guard page at {:#x}", old_p4_page.start_address());
 }

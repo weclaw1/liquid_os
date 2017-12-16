@@ -1,4 +1,5 @@
 use ::Frame;
+use multiboot2::ElfSection;
 
 pub struct Entry(u64);
 
@@ -31,13 +32,21 @@ impl Entry {
     }
 
     pub fn counter_bits(&self) -> usize {
-        (self.0 as usize & 0x00000000_00000e00) >> 9
+        (self.0 as usize & 0x3ff00000_00000000) >> 52
     }
 
-    pub fn set_counter_bits(&mut self, bits: usize) {
-        assert!(bits <= 7, "bits can't be bigger than 7");
-        self.0 = ((self.0 as usize & 0xffffffff_fffff1ff) | (bits << 9)) as u64;
+    pub fn set_counter_bits(&mut self, count: usize) {
+        self.0 = ((self.0 as usize & 0xc00fffff_ffffffff) | (count << 52)) as u64;
     }
+
+    // pub fn counter_bits(&self) -> usize {
+    //     (self.0 as usize & 0x00000000_00000e00) >> 9
+    // }
+
+    // pub fn set_counter_bits(&mut self, bits: usize) {
+    //     assert!(bits <= 7, "bits can't be bigger than 7");
+    //     self.0 = ((self.0 as usize & 0xffffffff_fffff1ff) | (bits << 9)) as u64;
+    // }
 }
 
 bitflags! {
@@ -52,5 +61,27 @@ bitflags! {
         const HUGE_PAGE =       1 << 7;
         const GLOBAL =          1 << 8;
         const NO_EXECUTE =      1 << 63;
+    }
+}
+
+impl EntryFlags {
+    pub fn from_elf_section_flags(section: &ElfSection) -> EntryFlags {
+        use multiboot2::{ELF_SECTION_ALLOCATED, ELF_SECTION_WRITABLE,
+            ELF_SECTION_EXECUTABLE};
+
+        let mut flags = EntryFlags::empty();
+
+        if section.flags().contains(ELF_SECTION_ALLOCATED) {
+            // section is loaded to memory
+            flags = flags | EntryFlags::PRESENT;
+        }
+        if section.flags().contains(ELF_SECTION_WRITABLE) {
+            flags = flags | EntryFlags::WRITABLE;
+        }
+        if !section.flags().contains(ELF_SECTION_EXECUTABLE) {
+            flags = flags | EntryFlags::NO_EXECUTE;
+        }
+
+        flags
     }
 }

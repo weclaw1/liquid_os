@@ -3,6 +3,7 @@
 #![feature(unique)]
 
 extern crate multiboot2;
+extern crate spin;
 extern crate x86_64 as extern_x86_64;
 
 #[macro_use]
@@ -18,8 +19,37 @@ pub mod x86_64;
 pub use x86_64::paging::remap_the_kernel;
 
 use x86_64::paging::PhysicalAddress;
+use spin::Mutex;
+use multiboot2::MemoryAreaIter;
 
 pub const PAGE_SIZE: usize = 4096;
+
+static ALLOCATOR: Mutex<Option<BitmapFrameAllocator>> = Mutex::new(None);
+
+/// Init memory module
+/// Must be called once, and only once,
+pub unsafe fn init(kernel_start: usize, kernel_end: usize, 
+                   multiboot_start: usize, multiboot_end: usize, 
+                   memory_areas: MemoryAreaIter) {
+    *ALLOCATOR.lock() = Some(BitmapFrameAllocator::new(&mut bitmap_frame_allocator::BITMAP, 
+                             kernel_start, kernel_end, multiboot_start, multiboot_end, memory_areas));
+}
+
+pub fn allocate_frame() -> Option<Frame> {
+    if let Some(ref mut allocator) = *ALLOCATOR.lock() {
+        allocator.allocate_frame()
+    } else {
+        panic!("frame allocator not initialized");
+    }
+}
+
+pub fn deallocate_frame(frame: Frame) {
+    if let Some(ref mut allocator) = *ALLOCATOR.lock() {
+        allocator.deallocate_frame(frame)
+    } else {
+        panic!("frame allocator not initialized");
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Frame {
