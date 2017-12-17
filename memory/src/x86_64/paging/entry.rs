@@ -1,43 +1,55 @@
 use ::Frame;
 use multiboot2::ElfSection;
 
+pub const ADDRESS_MASK: usize = 0x000f_ffff_ffff_f000;
+pub const COUNTER_MASK: u64 = 0x3ff00000_00000000;
+
 pub struct Entry(u64);
 
 impl Entry {
-    pub fn is_unused(&self) -> bool {
-        self.0 == 0
-    }
-
-    pub fn set_unused(&mut self) {
+    /// Zero entry
+    pub fn set_zero(&mut self) {
         self.0 = 0;
     }
+    /// Is the entry unused?
+    pub fn is_unused(&self) -> bool {
+        self.0 == (self.0 & COUNTER_MASK)
+    }
 
+    /// Make the entry unused
+    pub fn set_unused(&mut self) {
+        self.0 = (self.0 & COUNTER_MASK);
+    }
+
+    /// Get the current entry flags
     pub fn flags(&self) -> EntryFlags {
         EntryFlags::from_bits_truncate(self.0)
     }
 
+    /// Get the associated frame, if available
     pub fn pointed_frame(&self) -> Option<Frame> {
         if self.flags().contains(EntryFlags::PRESENT) {
-            Some(Frame::containing_address(
-                self.0 as usize & 0x000fffff_fffff000
-            ))
+            Some(Frame::containing_address(self.0 as usize & ADDRESS_MASK))
         } else {
             None
         }
     }
 
     pub fn set(&mut self, frame: Frame, flags: EntryFlags) {
-        assert!(frame.start_address() & !0x000fffff_fffff000 == 0);
-        self.0 = (frame.start_address() as u64) | flags.bits();
+        debug_assert!(frame.start_address() & !ADDRESS_MASK == 0);
+        self.0 = (frame.start_address() as u64) | flags.bits() | (self.0 & COUNTER_MASK);
     }
 
-    pub fn counter_bits(&self) -> usize {
-        (self.0 as usize & 0x3ff00000_00000000) >> 52
+    /// Get bits 52-61 in entry, used as counter for page table
+    pub fn counter_bits(&self) -> u64 {
+        (self.0 & COUNTER_MASK) >> 52
     }
 
-    pub fn set_counter_bits(&mut self, count: usize) {
-        self.0 = ((self.0 as usize & 0xc00fffff_ffffffff) | (count << 52)) as u64;
+    /// Set bits 52-61 in entry, used as counter for page table    
+    pub fn set_counter_bits(&mut self, count: u64) {
+        self.0 = (self.0 & !COUNTER_MASK) | (count << 52);
     }
+
 
     // pub fn counter_bits(&self) -> usize {
     //     (self.0 as usize & 0x00000000_00000e00) >> 9

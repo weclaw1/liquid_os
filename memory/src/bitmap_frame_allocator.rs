@@ -1,8 +1,8 @@
 use core;
 use core::mem;
 
-use super::{Frame, FrameAllocator, FrameIter, PAGE_SIZE};
-use multiboot2::{MemoryAreaIter, MemoryArea};
+use super::{Frame, FrameAllocator, PAGE_SIZE};
+use multiboot2::{MemoryAreaIter};
 
 const MAX_MEM_SIZE: usize = 4294967296;
 const NUM_OF_FRAMES: usize = MAX_MEM_SIZE/PAGE_SIZE;
