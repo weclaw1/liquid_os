@@ -3,9 +3,6 @@ language: rust
 rust:
   - nightly
 
-cache:
-  - cargo
-
 install:
   - which xargo || cargo install xargo
   - which just || cargo install just
