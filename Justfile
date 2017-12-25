@@ -12,7 +12,7 @@ asm_build_dir = "build/arch/" + arch + "/boot/"
 asm_src_dir = "src/arch/" + arch + "/boot/"
 
 clean:
-	cargo clean
+	xargo clean
 	cd drivers/video/console && cargo clean
 	cd memory && cargo clean
 	rm -r build

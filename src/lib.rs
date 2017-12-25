@@ -1,10 +1,10 @@
 #![feature(lang_items)]
+#![feature(const_size_of)]
+#![feature(compiler_builtins_lib)]
 #![no_std]
 
-#![feature(compiler_builtins_lib)]
-#![feature(const_size_of)]
-
 extern crate spin;
+
 extern crate compiler_builtins;
 extern crate multiboot2;
 extern crate x86_64;
