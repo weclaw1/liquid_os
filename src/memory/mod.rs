@@ -1,28 +1,19 @@
-#![no_std]
-#![feature(const_size_of)]
-#![feature(unique)]
-
-extern crate multiboot2;
-extern crate spin;
-extern crate x86_64 as extern_x86_64;
-
-#[macro_use]
-extern crate bitflags;
-
-#[macro_use]
-extern crate console;
-
-pub mod bitmap_frame_allocator;
-pub use bitmap_frame_allocator::*;
-
 pub mod x86_64;
-pub use x86_64::paging::remap_the_kernel;
+pub mod heap_allocator;
 
-use x86_64::paging::PhysicalAddress;
+mod bitmap_frame_allocator;
+
+use self::bitmap_frame_allocator::BitmapFrameAllocator;
+
+use self::x86_64::paging::{PAGE_SIZE, PhysicalAddress};
+pub use self::x86_64::paging::remap_the_kernel;
+
+use x86_64::registers::msr::{IA32_EFER, rdmsr, wrmsr};
+use x86_64::registers::control_regs::{cr0, cr0_write, Cr0};
+
 use spin::Mutex;
-use multiboot2::MemoryAreaIter;
 
-pub const PAGE_SIZE: usize = 4096;
+use multiboot2::{MemoryAreaIter, ElfSectionsTag, MemoryMapTag};
 
 static ALLOCATOR: Mutex<Option<BitmapFrameAllocator>> = Mutex::new(None);
 
@@ -61,7 +52,7 @@ impl Frame {
         self.number
     }
 
-    pub fn containing_address(address: usize) -> Frame {
+    pub fn containing_address(address: PhysicalAddress) -> Frame {
         Frame{ number: address / PAGE_SIZE }
     }
 
@@ -104,5 +95,33 @@ impl Iterator for FrameIter {
         } else {
             None
         }
+    }
+}
+
+pub fn enable_nxe_bit() {
+    let nxe_bit = 1 << 11;
+    unsafe {
+        let efer = rdmsr(IA32_EFER);
+        wrmsr(IA32_EFER, efer | nxe_bit);
+    }
+}
+
+pub fn enable_write_protect_bit() {
+    unsafe { cr0_write(cr0() | Cr0::WRITE_PROTECT) };
+}
+
+pub fn print_memory_areas(memory_map_tag: &MemoryMapTag) {
+    println!("memory areas:");
+    for area in memory_map_tag.memory_areas() {
+        println!("  start: 0x{:x}, end: 0x{:x}, length: 0x{:x}", 
+                    area.base_addr, area.base_addr + area.length, area.length);
+    }
+}
+
+pub fn print_kernel_sections(elf_sections_tag: &'static ElfSectionsTag) {
+    println!("kernel sections:");
+    for section in elf_sections_tag.sections() {
+        println!("  addr: 0x{:x}, end_addr: 0x{:x}, size: 0x{:x}, flags: 0x{:x}", 
+                            section.addr, section.addr + section.size, section.size, section.flags);
     }
 }

@@ -1,6 +1,11 @@
 #![feature(lang_items)]
 #![feature(const_size_of)]
 #![feature(compiler_builtins_lib)]
+#![feature(alloc)]
+#![feature(allocator_api)]
+#![feature(global_allocator)]
+#![feature(const_fn)]
+#![feature(unique)]
 #![no_std]
 
 extern crate spin;
@@ -8,23 +13,32 @@ extern crate spin;
 extern crate compiler_builtins;
 extern crate multiboot2;
 extern crate x86_64;
+extern crate volatile;
+extern crate alloc;
+
+#[macro_use]
+extern crate bitflags;
 
 /// External functions
 pub mod externs;
 
+/// Drivers
 #[macro_use]
-extern crate console;
-extern crate memory;
+mod drivers;
 
-mod kernel;
+/// Memory management
+mod memory;
+use memory::heap_allocator::{HEAP_START, HEAP_SIZE, LockedBumpAllocator};
 
+#[global_allocator]
+static HEAP_ALLOCATOR: LockedBumpAllocator = LockedBumpAllocator::new(HEAP_START, HEAP_START + HEAP_SIZE);
 
 #[no_mangle]
-pub extern fn kmain(multiboot_information_address: usize) {
+pub extern "C" fn kmain(multiboot_information_address: usize) {
     let boot_info = unsafe{ multiboot2::load(multiboot_information_address) };
     let memory_map_tag = boot_info.memory_map_tag().expect("Memory map tag required");
 
-    kernel::memory::print_memory_areas(memory_map_tag);
+    memory::print_memory_areas(memory_map_tag);
 
     let elf_sections_tag = boot_info.elf_sections_tag().expect("Elf-sections tag required");
     
@@ -41,10 +55,12 @@ pub extern fn kmain(multiboot_information_address: usize) {
 
     unsafe {memory::init(kernel_start as usize, kernel_end as usize, multiboot_start, multiboot_end, memory_map_tag.memory_areas());}
 
-    kernel::memory::enable_nxe_bit();
-    kernel::memory::enable_write_protect_bit();
+    memory::enable_nxe_bit();
+    memory::enable_write_protect_bit();
     memory::remap_the_kernel(boot_info);
     println!("It did not crash!");
+    use alloc::boxed::Box;
+    let heap_test = Box::new(42);
 
     loop{
 

@@ -1,13 +1,14 @@
 use core;
 use core::mem;
 
-use super::{Frame, FrameAllocator, PAGE_SIZE};
-use multiboot2::{MemoryAreaIter};
+use memory::x86_64::paging::PAGE_SIZE;
+use super::{Frame, FrameAllocator};
+use multiboot2::MemoryAreaIter;
 
 const MAX_MEM_SIZE: usize = 4294967296;
 const NUM_OF_FRAMES: usize = MAX_MEM_SIZE/PAGE_SIZE;
 const BITS_PER_BLOCK: usize = mem::size_of::<usize>() * 8;
-pub const ARRAY_SIZE: usize = NUM_OF_FRAMES/BITS_PER_BLOCK;
+const ARRAY_SIZE: usize = NUM_OF_FRAMES/BITS_PER_BLOCK;
 
 pub static mut BITMAP: [usize; ARRAY_SIZE] = [0; ARRAY_SIZE];
 
@@ -142,104 +143,4 @@ impl<'a> BitmapFrameAllocator<'a> {
             self.set_used(frame.number(), true);
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    extern crate multiboot2;
-
-    use super::*;
-
-    mod test_multiboot2 {
-        #[repr(C)]
-        pub struct MemoryArea {
-            pub base_addr: u64,
-            pub length: u64,
-            pub typ: u32,
-            pub _reserved: u32,
-        }
-
-        #[derive(Clone, Debug)]
-        pub struct MemoryAreaIter {
-            pub current_area: u64,
-            pub last_area: u64,
-            pub entry_size: u32,
-        }
-    }
-
-    fn make_multiboot2_iter() -> multiboot2::MemoryAreaIter {
-        static MEMORY_AREAS: [test_multiboot2::MemoryArea; 3] = [
-            test_multiboot2::MemoryArea {
-                base_addr: 0x0,
-                length: 0x9fc00,
-                typ: 1,
-                _reserved: 0,
-            },
-            test_multiboot2::MemoryArea {
-                base_addr: 0x9fc00,
-                length: 0x60400,
-                typ: 0,
-                _reserved: 0,
-            },
-            test_multiboot2::MemoryArea {
-                base_addr: 0x100000,
-                length: 0x7EE0000,
-                typ: 1,
-                _reserved: 0,
-            }
-        ];
-
-        let mem_iter = test_multiboot2::MemoryAreaIter {
-            current_area: &MEMORY_AREAS[0] as *const _ as u64,
-            last_area: &MEMORY_AREAS[2] as *const _ as u64,
-            entry_size: ((&MEMORY_AREAS[1] as *const _ as u64) - (&MEMORY_AREAS[0] as *const _ as u64)) as u32,
-        };
-
-        unsafe { mem::transmute_copy(&mem_iter) }
-    }
-
-    #[test]
-    fn initialisation() {
-        let multiboot2_iter = make_multiboot2_iter();
-
-        let mut bitmap: [usize; ARRAY_SIZE] = [0; ARRAY_SIZE];
-
-        let kernel_start: usize = 0x100000;
-        let kernel_end: usize = 0x13a1b0;
-
-        let multiboot_start: usize = 0x13e398;
-        let multiboot_end: usize = 0x13eaa0;
-
-        let allocator = BitmapFrameAllocator::new(&mut bitmap, kernel_start, kernel_end, multiboot_start, multiboot_end, multiboot2_iter);
-    }
-
-    #[test]
-    fn areas_are_mapped_correctly() {
-        let multiboot2_iter = make_multiboot2_iter();
-
-        let mut bitmap: [usize; ARRAY_SIZE] = [0; ARRAY_SIZE];
-
-        let kernel_start: usize = 0x100000;
-        let kernel_end: usize = 0x13a1b0;
-
-        let multiboot_start: usize = 0x13e398;
-        let multiboot_end: usize = 0x13eaa0;
-
-        let allocator = BitmapFrameAllocator::new(&mut bitmap, kernel_start, kernel_end, multiboot_start, multiboot_end, multiboot2_iter);
-        assert_eq!(allocator.frame_is_used(Frame::containing_address(0).number()), false);
-        assert_eq!(allocator.frame_is_used(Frame::containing_address(0x9f000 - 1).number()), false);
-        assert_eq!(allocator.frame_is_used(Frame::containing_address(0x9f000).number()), true);
-        assert_eq!(allocator.frame_is_used(Frame::containing_address(0x9fc00).number()), true);
-        assert_eq!(allocator.frame_is_used(Frame::containing_address(0x9fc01).number()), true);
-        assert_eq!(allocator.frame_is_used(Frame::containing_address(0x100000 - 1).number()), true);
-        assert_eq!(allocator.frame_is_used(Frame::containing_address(0x100000).number()), true);
-        assert_eq!(allocator.frame_is_used(Frame::containing_address(0x13a1b0).number()), true);
-        assert_eq!(allocator.frame_is_used(Frame::containing_address(0x13b000).number()), false);
-        assert_eq!(allocator.frame_is_used(Frame::containing_address(0x13e398).number()), true);
-        assert_eq!(allocator.frame_is_used(Frame::containing_address(0x13eaa0).number()), true);
-        assert_eq!(allocator.frame_is_used(Frame::containing_address(0x7fe0000).number()), true); 
-    }
-
-    
-
 }

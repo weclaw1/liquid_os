@@ -27,17 +27,3 @@ impl ColorCode {
         ColorCode((background as u8) << 4 | (foreground as u8))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use vga_console::color::{Color, ColorCode};
-
-    #[test]
-    fn colorcode() {
-        let ColorCode(val) = ColorCode::new(Color::Blue, Color::Magenta);
-        assert_eq!(val, 0x51);
-        let ColorCode(val) = ColorCode::new(Color::Yellow, Color::Red);
-        assert_eq!(val, 0x4E);
-    }
-
-}

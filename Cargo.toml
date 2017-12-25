@@ -7,9 +7,9 @@ authors = ["Robert Węcławski <r.weclawski@gmail.com>"]
 x86_64 = "0.1.2"
 multiboot2 = "0.3.2"
 spin = "0.4.4"
+bitflags = "1.0.1"
+volatile = "0.2.3"
 compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins" }
-console = { path = "drivers/video/console" }
-memory = { path = "memory" }
 
 [lib]
 crate-type = ["staticlib"]

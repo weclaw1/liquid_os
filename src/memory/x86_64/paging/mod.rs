@@ -2,28 +2,24 @@ mod entry;
 mod table;
 mod temporary_page;
 mod mapper;
-use ::PAGE_SIZE;
-use ::Frame;
-use ::allocate_frame;
 
+use memory::Frame;
+use memory::allocate_frame;
+
+use self::entry::EntryFlags;
 use multiboot2::BootInformation;
 
-use extern_x86_64;
-use extern_x86_64::instructions::tlb;
-use extern_x86_64::registers::control_regs;
+use x86_64;
+use x86_64::instructions::tlb;
+use x86_64::registers::control_regs;
 
-use self::table::{Table, Level4};
-use core::ptr::Unique;
-
-pub use self::entry::*;
-use ::FrameAllocator;
-
-pub use self::mapper::Mapper;
+use self::mapper::Mapper;
 use core::ops::{Deref, DerefMut};
 
 pub type PhysicalAddress = usize;
 pub type VirtualAddress = usize;
 
+pub const PAGE_SIZE: usize = 4096;
 const ENTRY_COUNT: usize = 512;
 
 use self::temporary_page::TemporaryPage;
@@ -119,13 +115,13 @@ impl ActivePageTable {
             ),
         };
         unsafe {
-            control_regs::cr3_write(extern_x86_64::PhysicalAddress(new_table.p4_frame.start_address() as u64));
+            control_regs::cr3_write(x86_64::PhysicalAddress(new_table.p4_frame.start_address() as u64));
         }
         old_table
     }
 
     pub fn flush(&mut self, page: Page) {
-        tlb::flush(extern_x86_64::VirtualAddress(page.start_address()));
+        tlb::flush(x86_64::VirtualAddress(page.start_address()));
     }
 
     pub fn flush_all(&mut self) {

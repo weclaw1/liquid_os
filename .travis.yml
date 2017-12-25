@@ -10,7 +10,7 @@ install:
 
 script:
   - just kernel
-  - just test
+  - just iso
 
 addons:
   apt:

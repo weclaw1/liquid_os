@@ -1,7 +1,7 @@
 use super::Page;
 use super::{ActivePageTable, VirtualAddress};
 use super::table::{Table, Level1};
-use ::Frame;
+use memory::Frame;
 use super::entry::EntryFlags;
 
 pub struct TemporaryPage {

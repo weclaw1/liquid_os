@@ -1,4 +1,4 @@
-use super::volatile::Volatile;
+use volatile::Volatile;
 
 pub mod color;
 
@@ -110,38 +110,5 @@ impl fmt::Write for VgaConsole {
         }
 
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use core::mem;
-    use core::fmt::Write;
-    use super::*;
-
-    #[test]
-    fn writing_character_works() {
-        let mut vga_mem : [u8; BUFFER_WIDTH * BUFFER_HEIGHT * 2] = [0 ; BUFFER_WIDTH * BUFFER_HEIGHT * 2];
-        unsafe {
-            let vga_mem_pointer = mem::transmute::<&mut u8, *mut Buffer>(&mut vga_mem[0]);
-            let mut vga_console = VgaConsole::new(vga_mem_pointer);
-            vga_console.write_byte(b'a');
-        } 
-        
-        assert_eq!(vga_mem[0], b'a');
-    }
-
-    #[test]
-    fn writing_str_works() {
-        let mut vga_mem : [u8; BUFFER_WIDTH * BUFFER_HEIGHT * 2] = [0 ; BUFFER_WIDTH * BUFFER_HEIGHT * 2];
-        let mem_after_writing : [u8; 6] = [b'a', 0x02, b'l', 0x02, b'a', 0x02];
-        unsafe {
-            let vga_mem_pointer = mem::transmute::<&mut u8, *mut Buffer>(&mut vga_mem[0]);
-            let mut vga_console = VgaConsole::new(vga_mem_pointer);
-            vga_console.set_color_code(ColorCode::new(Color::Green, Color::Black));
-            vga_console.write_str("ala");
-        } 
-        
-        assert_eq!(&vga_mem[0..6], &mem_after_writing[0..6]);
     }
 }

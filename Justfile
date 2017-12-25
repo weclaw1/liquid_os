@@ -13,8 +13,6 @@ asm_src_dir = "src/arch/" + arch + "/boot/"
 
 clean:
 	xargo clean
-	cd drivers/video/console && cargo clean
-	cd memory && cargo clean
 	rm -r build
 
 run: iso
@@ -32,8 +30,4 @@ kernel:
 	nasm {{asm_src_dir}}boot.asm -felf64 -o {{asm_build_dir}}boot.o
 	xargo build --target {{target}}
 	ld -n --gc-sections -T {{linker_script}} -o {{kernel}} {{assembly_object_file}} {{rust_os}}
-
-test:
-	cd drivers/video/console && cargo test
-	cd memory && cargo test
 	

@@ -1,8 +1,9 @@
-use ::Frame;
+use memory::Frame;
 use multiboot2::ElfSection;
+use multiboot2::{ELF_SECTION_ALLOCATED, ELF_SECTION_WRITABLE, ELF_SECTION_EXECUTABLE};
 
-pub const ADDRESS_MASK: usize = 0x000f_ffff_ffff_f000;
-pub const COUNTER_MASK: u64 = 0x3ff00000_00000000;
+const ADDRESS_MASK: usize = 0x000f_ffff_ffff_f000;
+const COUNTER_MASK: u64 = 0x3ff00000_00000000;
 
 pub struct Entry(u64);
 
@@ -11,14 +12,15 @@ impl Entry {
     pub fn set_zero(&mut self) {
         self.0 = 0;
     }
+
     /// Is the entry unused?
     pub fn is_unused(&self) -> bool {
-        self.0 == (self.0 & COUNTER_MASK)
+        self.0 == self.0 & COUNTER_MASK
     }
 
     /// Make the entry unused
     pub fn set_unused(&mut self) {
-        self.0 = (self.0 & COUNTER_MASK);
+        self.0 = self.0 & COUNTER_MASK;
     }
 
     /// Get the current entry flags
@@ -49,16 +51,6 @@ impl Entry {
     pub fn set_counter_bits(&mut self, count: u64) {
         self.0 = (self.0 & !COUNTER_MASK) | (count << 52);
     }
-
-
-    // pub fn counter_bits(&self) -> usize {
-    //     (self.0 as usize & 0x00000000_00000e00) >> 9
-    // }
-
-    // pub fn set_counter_bits(&mut self, bits: usize) {
-    //     assert!(bits <= 7, "bits can't be bigger than 7");
-    //     self.0 = ((self.0 as usize & 0xffffffff_fffff1ff) | (bits << 9)) as u64;
-    // }
 }
 
 bitflags! {
@@ -78,9 +70,6 @@ bitflags! {
 
 impl EntryFlags {
     pub fn from_elf_section_flags(section: &ElfSection) -> EntryFlags {
-        use multiboot2::{ELF_SECTION_ALLOCATED, ELF_SECTION_WRITABLE,
-            ELF_SECTION_EXECUTABLE};
-
         let mut flags = EntryFlags::empty();
 
         if section.flags().contains(ELF_SECTION_ALLOCATED) {

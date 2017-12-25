@@ -1,11 +1,11 @@
-use super::{VirtualAddress, PhysicalAddress, Page, ENTRY_COUNT, ActivePageTable};
-use super::entry::*;
-use super::table::{self, Table, Level4, Level1};
-use ::{PAGE_SIZE, Frame, FrameAllocator, allocate_frame, deallocate_frame};
 use core::ptr::Unique;
 use core::mem;
-use extern_x86_64;
-use extern_x86_64::instructions::tlb;
+
+use super::{VirtualAddress, PhysicalAddress, Page, ActivePageTable};
+use super::table;
+use super::table::{Table, Level4};
+use super::entry::EntryFlags;
+use memory::{PAGE_SIZE, Frame, allocate_frame, deallocate_frame};
 
 /// In order to enforce correct paging operations in the kernel, these types
 /// are returned on any mapping operation to get the code involved to specify
