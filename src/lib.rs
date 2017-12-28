@@ -14,6 +14,8 @@ extern crate compiler_builtins;
 extern crate multiboot2;
 extern crate x86_64;
 extern crate volatile;
+
+#[macro_use]
 extern crate alloc;
 
 #[macro_use]
@@ -38,29 +40,31 @@ pub extern "C" fn kmain(multiboot_information_address: usize) {
     let boot_info = unsafe{ multiboot2::load(multiboot_information_address) };
     let memory_map_tag = boot_info.memory_map_tag().expect("Memory map tag required");
 
-    memory::print_memory_areas(memory_map_tag);
+    //memory::print_memory_areas(memory_map_tag);
 
     let elf_sections_tag = boot_info.elf_sections_tag().expect("Elf-sections tag required");
     
-    //kernel::memory::print_kernel_sections(elf_sections_tag);
-
-    let kernel_start = elf_sections_tag.sections().map(|s| s.addr).min().unwrap();
-    let kernel_end = elf_sections_tag.sections().map(|s| s.addr + s.size).max().unwrap();
-
-    let multiboot_start = boot_info.start_address();
-    let multiboot_end = boot_info.end_address();
-
-    println!("kernel start: 0x{:x}, kernel end: 0x{:x}", kernel_start, kernel_end);
-    println!("multiboot start: 0x{:x}, multiboot end: 0x{:x}", multiboot_start, multiboot_end);
-
-    unsafe {memory::init(kernel_start as usize, kernel_end as usize, multiboot_start, multiboot_end, memory_map_tag.memory_areas());}
+    memory::print_kernel_sections(elf_sections_tag);
 
     memory::enable_nxe_bit();
     memory::enable_write_protect_bit();
-    memory::remap_the_kernel(boot_info);
-    println!("It did not crash!");
+
+    // set up guard page and map the heap pages
+    memory::init(boot_info);
+
     use alloc::boxed::Box;
-    let heap_test = Box::new(42);
+    let mut heap_test = Box::new(42);
+    *heap_test -= 15;
+    let heap_test2 = Box::new("hello");
+    println!("{:?} {:?}", heap_test, heap_test2);
+
+    let mut vec_test = vec![1,2,3,4,5,6,7];
+    vec_test[3] = 42;
+    for i in &vec_test {
+        print!("{} ", i);
+    }
+
+    println!("It did not crash!");
 
     loop{
 

@@ -5,21 +5,23 @@ mod bitmap_frame_allocator;
 
 use self::bitmap_frame_allocator::BitmapFrameAllocator;
 
-use self::x86_64::paging::{PAGE_SIZE, PhysicalAddress};
-pub use self::x86_64::paging::remap_the_kernel;
+use self::x86_64::paging::{PAGE_SIZE, PhysicalAddress, Page};
+pub use self::x86_64::paging;
+
+use self::heap_allocator::{HEAP_START, HEAP_SIZE};
 
 use x86_64::registers::msr::{IA32_EFER, rdmsr, wrmsr};
 use x86_64::registers::control_regs::{cr0, cr0_write, Cr0};
 
 use spin::Mutex;
 
-use multiboot2::{MemoryAreaIter, ElfSectionsTag, MemoryMapTag};
+use multiboot2::{MemoryAreaIter, ElfSectionsTag, MemoryMapTag, BootInformation};
 
 static ALLOCATOR: Mutex<Option<BitmapFrameAllocator>> = Mutex::new(None);
 
-/// Init memory module
+/// Init memory allocator
 /// Must be called once, and only once,
-pub unsafe fn init(kernel_start: usize, kernel_end: usize, 
+pub unsafe fn frame_allocator_init(kernel_start: usize, kernel_end: usize, 
                    multiboot_start: usize, multiboot_end: usize, 
                    memory_areas: MemoryAreaIter) {
     *ALLOCATOR.lock() = Some(BitmapFrameAllocator::new(&mut bitmap_frame_allocator::BITMAP, 
@@ -123,5 +125,37 @@ pub fn print_kernel_sections(elf_sections_tag: &'static ElfSectionsTag) {
     for section in elf_sections_tag.sections() {
         println!("  addr: 0x{:x}, end_addr: 0x{:x}, size: 0x{:x}, flags: 0x{:x}", 
                             section.addr, section.addr + section.size, section.size, section.flags);
+    }
+}
+
+pub fn init(boot_info: &BootInformation) {
+    let memory_map_tag = boot_info.memory_map_tag().expect(
+        "Memory map tag required");
+    let elf_sections_tag = boot_info.elf_sections_tag().expect(
+        "Elf sections tag required");
+
+    let kernel_start = elf_sections_tag.sections()
+        .filter(|s| s.is_allocated()).map(|s| s.addr).min().unwrap();
+    let kernel_end = elf_sections_tag.sections()
+        .filter(|s| s.is_allocated()).map(|s| s.addr + s.size).max()
+        .unwrap();
+
+    println!("kernel start: {:#x}, kernel end: {:#x}",
+             kernel_start,
+             kernel_end);
+    println!("multiboot start: {:#x}, multiboot end: {:#x}",
+             boot_info.start_address(),
+             boot_info.end_address());
+
+    unsafe {frame_allocator_init(kernel_start as usize, kernel_end as usize, boot_info.start_address(), boot_info.end_address(), memory_map_tag.memory_areas());}
+
+    let mut active_table = paging::remap_the_kernel(boot_info);
+
+    let heap_start_page = Page::containing_address(HEAP_START);
+    let heap_end_page = Page::containing_address(HEAP_START + HEAP_SIZE - 1);
+
+    for page in Page::range_inclusive(heap_start_page, heap_end_page) {
+        let result = active_table.map(page, paging::EntryFlags::WRITABLE);
+        result.flush(&mut active_table);
     }
 }

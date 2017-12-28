@@ -6,7 +6,7 @@ mod mapper;
 use memory::Frame;
 use memory::allocate_frame;
 
-use self::entry::EntryFlags;
+pub use self::entry::EntryFlags;
 use multiboot2::BootInformation;
 
 use x86_64;
@@ -24,12 +24,19 @@ const ENTRY_COUNT: usize = 512;
 
 use self::temporary_page::TemporaryPage;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Page {
    number: usize,
 }
 
 impl Page {
+    pub fn range_inclusive(start: Page, end: Page) -> PageIter {
+        PageIter {
+            start: start,
+            end: end,
+        }
+    }
+
     pub fn containing_address(address: VirtualAddress) -> Page {
         assert!(address < 0x0000_8000_0000_0000 ||
                 address >= 0xffff_8000_0000_0000,
@@ -52,6 +59,25 @@ impl Page {
     }
     fn p1_index(&self) -> usize {
         (self.number >> 0) & 0o777
+    }
+}
+
+pub struct PageIter {
+    start: Page,
+    end: Page,
+}
+
+impl Iterator for PageIter {
+    type Item = Page;
+
+    fn next(&mut self) -> Option<Page> {
+        if self.start <= self.end {
+            let page = self.start;
+            self.start.number += 1;
+            Some(page)
+        } else {
+            None
+        }
     }
 }
 
@@ -153,7 +179,7 @@ impl InactivePageTable {
 
 }
 
-pub fn remap_the_kernel(boot_info: &BootInformation) {
+pub fn remap_the_kernel(boot_info: &BootInformation) -> ActivePageTable {
     let mut temporary_page = TemporaryPage::new(Page { number: 0xcafebabe });
 
     let mut active_table = unsafe { ActivePageTable::new() };
@@ -210,4 +236,5 @@ pub fn remap_the_kernel(boot_info: &BootInformation) {
     let result = active_table.unmap(old_p4_page);
     result.flush(&mut active_table);
     println!("guard page at {:#x}", old_p4_page.start_address());
+    active_table
 }
