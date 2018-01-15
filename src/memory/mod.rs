@@ -158,4 +158,7 @@ pub fn init(boot_info: &BootInformation) {
         let result = active_table.map(page, paging::EntryFlags::WRITABLE);
         result.flush(&mut active_table);
     }
+
+    unsafe {heap_allocator::init(HEAP_START, HEAP_SIZE);}
+
 }

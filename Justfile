@@ -11,6 +11,8 @@ assembly_object_file = "build/arch/" + arch + "/boot/boot.o"
 asm_build_dir = "build/arch/" + arch + "/boot/"
 asm_src_dir = "src/arch/" + arch + "/boot/"
 
+current_dir = `pwd`
+
 clean:
 	xargo clean
 	rm -r build
@@ -28,6 +30,6 @@ iso: kernel
 kernel:
 	mkdir -p {{asm_build_dir}}
 	nasm {{asm_src_dir}}boot.asm -felf64 -o {{asm_build_dir}}boot.o
-	xargo build --target {{target}}
+	RUST_TARGET_PATH={{current_dir}} xargo build --target {{target}}
 	ld -n --gc-sections -T {{linker_script}} -o {{kernel}} {{assembly_object_file}} {{rust_os}}
 	

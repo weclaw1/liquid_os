@@ -14,6 +14,7 @@ extern crate compiler_builtins;
 extern crate multiboot2;
 extern crate x86_64;
 extern crate volatile;
+extern crate linked_list_allocator;
 
 #[macro_use]
 extern crate alloc;
@@ -30,10 +31,14 @@ mod drivers;
 
 /// Memory management
 mod memory;
-use memory::heap_allocator::{HEAP_START, HEAP_SIZE, LockedBumpAllocator};
+
+use memory::heap_allocator;
+use memory::heap_allocator::{HEAP_START, HEAP_SIZE};
+
+use linked_list_allocator::LockedHeap;
 
 #[global_allocator]
-static HEAP_ALLOCATOR: LockedBumpAllocator = LockedBumpAllocator::new(HEAP_START, HEAP_START + HEAP_SIZE);
+static ALLOCATOR: heap_allocator::Allocator = heap_allocator::Allocator;
 
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_information_address: usize) {
@@ -63,6 +68,11 @@ pub extern "C" fn kmain(multiboot_information_address: usize) {
     for i in &vec_test {
         print!("{} ", i);
     }
+
+    for _ in 0..100000 {
+        format!("Some String");
+    }
+
 
     println!("It did not crash!");
 

@@ -1,75 +1,38 @@
 use alloc::heap::{Alloc, AllocErr, Layout};
 use spin::Mutex;
+use linked_list_allocator::Heap;
 
 pub const HEAP_START: usize = 0o_000_001_000_000_0000;
-pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
+pub const HEAP_SIZE: usize = 80 * 4096; // 320 KiB
 
-pub struct LockedBumpAllocator(Mutex<BumpAllocator>);
 
-impl LockedBumpAllocator {
-    pub const fn new(heap_start: usize, heap_end: usize) -> Self {
-        LockedBumpAllocator(Mutex::new(BumpAllocator::new(heap_start, heap_end)))
-    }
+static HEAP: Mutex<Option<Heap>> = Mutex::new(None);
+
+pub unsafe fn init(offset: usize, size: usize) {
+    *HEAP.lock() = Some(Heap::new(offset, size));
 }
 
-unsafe impl<'a> Alloc for &'a LockedBumpAllocator {
+pub struct Allocator;
+
+unsafe impl<'a> Alloc for &'a Allocator {
     unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-        self.0.lock().alloc(layout)
-    }
-
-    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        self.0.lock().dealloc(ptr, layout)
-    }
-}
-
-/// A simple allocator that allocates memory linearly and ignores freed memory.
-#[derive(Debug)]
-pub struct BumpAllocator {
-    heap_start: usize,
-    heap_end: usize,
-    next: usize,
-}
-
-impl BumpAllocator {
-    pub const fn new(heap_start: usize, heap_end: usize) -> Self {
-        Self { heap_start, heap_end, next: heap_start }
-    }
-}
-
-unsafe impl Alloc for BumpAllocator {
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-        let alloc_start = align_up(self.next, layout.align());
-        let alloc_end = alloc_start.saturating_add(layout.size());
-
-        if alloc_end <= self.heap_end {
-            self.next = alloc_end;
-            Ok(alloc_start as *mut u8)
+        if let Some(ref mut heap) = *HEAP.lock() {
+            heap.allocate_first_fit(layout)
         } else {
-            Err(AllocErr::Exhausted{ request: layout })
+            panic!("__rust_allocate: heap not initialized");
         }
     }
 
     unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        // do nothing, leak memory
+        if let Some(ref mut heap) = *HEAP.lock() {
+            heap.deallocate(ptr, layout)
+        } else {
+            panic!("__rust_deallocate: heap not initialized");
+        }
+    }
+    
+    fn oom(&mut self, _: AllocErr) -> ! {
+        panic!("Out of memory");
     }
 }
-
-/// Align downwards. Returns the greatest x with alignment `align`
-/// so that x <= addr. The alignment must be a power of 2.
-pub fn align_down(addr: usize, align: usize) -> usize {
-    if align.is_power_of_two() {
-        addr & !(align - 1)
-    } else if align == 0 {
-        addr
-    } else {
-        panic!("`align` must be a power of 2");
-    }
-}
-
-/// Align upwards. Returns the smallest x with alignment `align`
-/// so that x >= addr. The alignment must be a power of 2.
-pub fn align_up(addr: usize, align: usize) -> usize {
-    align_down(addr + align - 1, align)
-}
-
 
