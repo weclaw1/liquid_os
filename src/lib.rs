@@ -6,6 +6,7 @@
 #![feature(global_allocator)]
 #![feature(const_fn)]
 #![feature(unique)]
+#![feature(ptr_internals)]
 #![no_std]
 
 extern crate spin;
@@ -81,11 +82,10 @@ pub extern "C" fn kmain(multiboot_information_address: usize) {
     }
 }
 
-#[lang = "eh_personality"] extern fn eh_personality() {}
 #[lang = "panic_fmt"]
 #[no_mangle]
-pub extern fn panic_fmt(fmt: core::fmt::Arguments, file: &'static str, line: u32) -> ! {
+pub extern fn rust_begin_panic(msg: core::fmt::Arguments, file: &'static str, line: u32, column: u32) -> ! {
     println!("\nPANIC in {} at line {}:", file, line);
-    println!("{}", fmt);
+    println!("{}", msg);
     loop{}
 }
