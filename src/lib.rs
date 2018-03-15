@@ -8,6 +8,7 @@
 #![feature(unique)]
 #![feature(ptr_internals)]
 #![no_std]
+#![no_main]
 
 extern crate spin;
 
@@ -42,7 +43,7 @@ use linked_list_allocator::LockedHeap;
 static ALLOCATOR: heap_allocator::Allocator = heap_allocator::Allocator;
 
 #[no_mangle]
-pub extern "C" fn kmain(multiboot_information_address: usize) {
+pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
     let boot_info = unsafe{ multiboot2::load(multiboot_information_address) };
     let memory_map_tag = boot_info.memory_map_tag().expect("Memory map tag required");
 
