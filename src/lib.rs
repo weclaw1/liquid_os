@@ -1,6 +1,5 @@
 #![feature(lang_items)]
 #![feature(const_size_of)]
-#![feature(compiler_builtins_lib)]
 #![feature(alloc)]
 #![feature(allocator_api)]
 #![feature(global_allocator)]
@@ -12,7 +11,6 @@
 
 extern crate spin;
 
-extern crate compiler_builtins;
 extern crate multiboot2;
 extern crate x86_64;
 extern crate volatile;
@@ -36,8 +34,6 @@ mod memory;
 
 use memory::heap_allocator;
 use memory::heap_allocator::{HEAP_START, HEAP_SIZE};
-
-use linked_list_allocator::LockedHeap;
 
 #[global_allocator]
 static ALLOCATOR: heap_allocator::Allocator = heap_allocator::Allocator;
