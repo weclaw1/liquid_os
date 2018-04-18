@@ -6,6 +6,7 @@
 #![feature(const_fn)]
 #![feature(unique)]
 #![feature(ptr_internals)]
+#![feature(abi_x86_interrupt)]
 #![no_std]
 #![no_main]
 
@@ -22,6 +23,9 @@ extern crate alloc;
 #[macro_use]
 extern crate bitflags;
 
+#[macro_use]
+extern crate lazy_static;
+
 /// External functions
 pub mod externs;
 
@@ -34,6 +38,8 @@ mod memory;
 
 use memory::heap_allocator;
 use memory::heap_allocator::{HEAP_START, HEAP_SIZE};
+
+mod interrupts;
 
 #[global_allocator]
 static ALLOCATOR: heap_allocator::Allocator = heap_allocator::Allocator;
@@ -67,10 +73,17 @@ pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
         print!("{} ", i);
     }
 
-    for _ in 0..100000 {
-        format!("Some String");
+    // initialize our IDT
+    interrupts::init();
+
+    // invoke a breakpoint exception
+    x86_64::instructions::interrupts::int3();
+
+    fn stack_overflow() {
+        stack_overflow(); // for each recursion, the return address is pushed
     }
 
+    stack_overflow();
 
     println!("It did not crash!");
 
