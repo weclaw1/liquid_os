@@ -14,7 +14,7 @@ use x86_64::instructions::tlb;
 use x86_64::registers::control_regs;
 
 use self::mapper::Mapper;
-use core::ops::{Deref, DerefMut};
+use core::ops::{Deref, DerefMut, Add};
 
 pub type PhysicalAddress = usize;
 pub type VirtualAddress = usize;
@@ -62,6 +62,15 @@ impl Page {
     }
 }
 
+impl Add<usize> for Page {
+    type Output = Page;
+
+    fn add(self, rhs: usize) -> Page {
+        Page { number: self.number + rhs }
+    }
+}
+
+#[derive(Clone)]
 pub struct PageIter {
     start: Page,
     end: Page,

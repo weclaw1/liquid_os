@@ -15,6 +15,7 @@ extern crate spin;
 extern crate multiboot2;
 extern crate x86_64;
 extern crate volatile;
+extern crate bit_field;
 extern crate linked_list_allocator;
 
 #[macro_use]
@@ -59,7 +60,7 @@ pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
     memory::enable_write_protect_bit();
 
     // set up guard page and map the heap pages
-    memory::init(boot_info);
+    let mut memory_controller = memory::init(boot_info);
 
     use alloc::boxed::Box;
     let mut heap_test = Box::new(42);
@@ -74,7 +75,7 @@ pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
     }
 
     // initialize our IDT
-    interrupts::init();
+    interrupts::init(&mut memory_controller);
 
     // invoke a breakpoint exception
     x86_64::instructions::interrupts::int3();

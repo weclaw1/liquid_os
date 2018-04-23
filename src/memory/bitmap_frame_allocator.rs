@@ -1,7 +1,7 @@
 use core;
 use core::mem;
 
-use memory::x86_64::paging::PAGE_SIZE;
+use memory::paging::PAGE_SIZE;
 use super::{Frame, FrameAllocator};
 use multiboot2::MemoryAreaIter;
 

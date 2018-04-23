@@ -1,8 +1,8 @@
 use core::ops::{Index, IndexMut};
 use core::marker::PhantomData;
 
-use memory::x86_64::paging::ENTRY_COUNT;
-use memory::x86_64::paging::entry::{Entry, EntryFlags};
+use memory::paging::ENTRY_COUNT;
+use memory::paging::entry::{Entry, EntryFlags};
 
 use memory::allocate_frame;
 

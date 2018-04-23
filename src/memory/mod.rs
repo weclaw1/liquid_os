@@ -1,12 +1,12 @@
-pub mod x86_64;
+pub mod paging;
 pub mod heap_allocator;
 
 mod bitmap_frame_allocator;
+mod stack_allocator;
 
 use self::bitmap_frame_allocator::BitmapFrameAllocator;
 
-use self::x86_64::paging::{PAGE_SIZE, PhysicalAddress, Page};
-pub use self::x86_64::paging;
+use self::paging::{PAGE_SIZE, PhysicalAddress, Page, ActivePageTable};
 
 use self::heap_allocator::{HEAP_START, HEAP_SIZE};
 
@@ -16,6 +16,12 @@ use x86_64::registers::control_regs::{cr0, cr0_write, Cr0};
 use spin::Mutex;
 
 use multiboot2::{MemoryAreaIter, ElfSectionsTag, MemoryMapTag, BootInformation};
+
+pub use self::stack_allocator::Stack;
+
+use self::stack_allocator::StackAllocator;
+
+const STACK_ALLOCATOR_PAGES: usize = 100;
 
 static ALLOCATOR: Mutex<Option<BitmapFrameAllocator>> = Mutex::new(None);
 
@@ -81,6 +87,17 @@ pub trait FrameAllocator {
     fn deallocate_frame(&mut self, frame: Frame);
 }
 
+pub struct MemoryController {
+    active_table: ActivePageTable,
+    stack_allocator: StackAllocator,
+}
+
+impl MemoryController {
+    pub fn alloc_stack(&mut self, size_in_pages: usize) -> Option<Stack> {
+        self.stack_allocator.alloc_stack(&mut self.active_table, size_in_pages)
+    }
+}
+
 pub struct FrameIter {
     start: Frame,
     end: Frame,
@@ -128,7 +145,7 @@ pub fn print_kernel_sections(elf_sections_tag: &'static ElfSectionsTag) {
     }
 }
 
-pub fn init(boot_info: &BootInformation) {
+pub fn init(boot_info: &BootInformation) -> MemoryController {
     let memory_map_tag = boot_info.memory_map_tag().expect(
         "Memory map tag required");
     let elf_sections_tag = boot_info.elf_sections_tag().expect(
@@ -160,5 +177,18 @@ pub fn init(boot_info: &BootInformation) {
     }
 
     unsafe {heap_allocator::init(HEAP_START, HEAP_SIZE);}
+
+    let stack_allocator = {
+        let stack_alloc_start = heap_end_page + 1;
+        let stack_alloc_end = stack_alloc_start + STACK_ALLOCATOR_PAGES;
+        let stack_alloc_range = Page::range_inclusive(stack_alloc_start,
+                                                      stack_alloc_end);
+        StackAllocator::new(stack_alloc_range)
+    };
+
+    MemoryController {
+        active_table: active_table,
+        stack_allocator: stack_allocator,
+    }
 
 }
