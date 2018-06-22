@@ -7,6 +7,7 @@
 #![feature(unique)]
 #![feature(ptr_internals)]
 #![feature(abi_x86_interrupt)]
+#![feature(panic_implementation)]
 #![no_std]
 #![no_main]
 
@@ -39,6 +40,8 @@ mod memory;
 
 use memory::heap_allocator;
 use memory::heap_allocator::{HEAP_START, HEAP_SIZE};
+
+use core::panic::PanicInfo;
 
 mod interrupts;
 
@@ -93,10 +96,9 @@ pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
     }
 }
 
-#[lang = "panic_fmt"]
+#[panic_implementation]
 #[no_mangle]
-pub extern fn rust_begin_panic(msg: core::fmt::Arguments, file: &'static str, line: u32, column: u32) -> ! {
-    println!("\nPANIC in {} at line {}:", file, line);
-    println!("{}", msg);
+extern "C" fn panic(info: &PanicInfo) -> ! {
+    println!("{}", info);
     loop{}
 }

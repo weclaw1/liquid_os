@@ -1,4 +1,4 @@
-use core::alloc::{GlobalAlloc, Layout, Opaque};
+use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::NonNull;
 use spin::Mutex;
 use linked_list_allocator::Heap;
@@ -16,9 +16,9 @@ pub unsafe fn init(offset: usize, size: usize) {
 pub struct Allocator;
 
 unsafe impl GlobalAlloc for Allocator {
-    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         if let Some(ref mut heap) = *HEAP.lock() {
-            heap.allocate_first_fit(layout).ok().map_or(0 as *mut Opaque, |allocation| {
+            heap.allocate_first_fit(layout).ok().map_or(0 as *mut u8, |allocation| {
                 allocation.as_ptr()
             })
         } else {
@@ -26,16 +26,18 @@ unsafe impl GlobalAlloc for Allocator {
         }
     }
 
-    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout) {
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         if let Some(ref mut heap) = *HEAP.lock() {
             heap.deallocate(NonNull::new_unchecked(ptr), layout)
         } else {
             panic!("__rust_deallocate: heap not initialized");
         }
     }
-    
-    fn oom(&self) -> ! {
-        panic!("Out of memory");
-    }
+
 }
 
+#[lang = "oom"]
+#[no_mangle]
+pub extern fn oom() -> ! {
+    panic!("kernel memory allocation failed");
+}
