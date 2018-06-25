@@ -1,5 +1,7 @@
 mod gdt;
 
+use x86_64;
+
 use x86_64::VirtualAddress;
 use x86_64::structures::idt::ExceptionStackFrame;
 use x86_64::structures::idt::Idt;
@@ -12,6 +14,8 @@ use x86_64::instructions::tables::load_tss;
 use spin::Once;
 
 use memory::MemoryController;
+#[macro_use]
+use drivers;
 
 const DOUBLE_FAULT_IST_INDEX: usize = 0;
 
@@ -26,6 +30,8 @@ lazy_static! {
             idt.double_fault.set_handler_fn(double_fault_handler)
                             .set_stack_index(DOUBLE_FAULT_IST_INDEX as u16);
         }
+        idt.interrupts[0].set_handler_fn(timer_handler);
+        idt.interrupts[1].set_handler_fn(keyboard_handler);
         idt
     };
 }
@@ -59,8 +65,8 @@ pub fn init(memory_controller: &mut MemoryController) {
         // load TSS
         load_tss(tss_selector);
     }
-
     IDT.load();
+    unsafe{x86_64::instructions::interrupts::enable()};
 }
 
 extern "x86-interrupt" 
@@ -72,4 +78,17 @@ extern "x86-interrupt"
 fn double_fault_handler(stack_frame: &mut ExceptionStackFrame, _error_code: u64) {
     println!("\nEXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame);
     loop {}
+}
+
+extern "x86-interrupt" 
+fn timer_handler(stack_frame: &mut ExceptionStackFrame) {
+    drivers::pic::MASTER.send_eoi();
+}
+
+extern "x86-interrupt" 
+fn keyboard_handler(stack_frame: &mut ExceptionStackFrame) {
+    if let Some(c) = drivers::keyboard::read_char() {
+        print!("{}", c);
+    }
+    drivers::pic::MASTER.send_eoi();
 }

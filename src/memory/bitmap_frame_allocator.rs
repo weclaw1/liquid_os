@@ -13,7 +13,7 @@ const ARRAY_SIZE: usize = NUM_OF_FRAMES/BITS_PER_BLOCK;
 pub static mut BITMAP: [usize; ARRAY_SIZE] = [0; ARRAY_SIZE];
 
 pub struct BitmapFrameAllocator<'a> {
-    bitmap: &'a mut [usize; ARRAY_SIZE],
+    bitmap: &'a mut [usize],
     second_scan: bool,
     next_frame: Frame,
     last_frame: Frame,
@@ -49,7 +49,7 @@ impl<'a> FrameAllocator for BitmapFrameAllocator<'a> {
 }
 
 impl<'a> BitmapFrameAllocator<'a> {
-    pub fn new(bitmap: &'a mut [usize; ARRAY_SIZE], kernel_start: usize, kernel_end: usize, 
+    pub fn new(bitmap: &'a mut [usize], kernel_start: usize, kernel_end: usize, 
                multiboot_start: usize, multiboot_end: usize, 
                memory_areas: MemoryAreaIter) -> BitmapFrameAllocator 
     {
@@ -117,6 +117,7 @@ impl<'a> BitmapFrameAllocator<'a> {
         let last_area = memory_areas.clone().max_by_key(|area| area.base_addr).unwrap();
         self.last_frame = Frame::containing_address(last_area.base_addr as usize + last_area.length as usize);
         let last_frame_number = self.last_frame.number();
+        assert!(last_frame_number <= NUM_OF_FRAMES, "Bitmap used by frame allocator is too small");
         self.set_used(last_frame_number, true);
 
 

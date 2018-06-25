@@ -8,6 +8,7 @@
 #![feature(ptr_internals)]
 #![feature(abi_x86_interrupt)]
 #![feature(panic_implementation)]
+#![feature(asm)]
 #![no_std]
 #![no_main]
 
@@ -77,19 +78,23 @@ pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
         print!("{} ", i);
     }
 
+    drivers::configure();
+
     // initialize our IDT
     interrupts::init(&mut memory_controller);
 
     // invoke a breakpoint exception
-    x86_64::instructions::interrupts::int3();
+    //x86_64::instructions::interrupts::int3();
 
     fn stack_overflow() {
         stack_overflow(); // for each recursion, the return address is pushed
     }
 
-    stack_overflow();
+    //stack_overflow();
 
     println!("It did not crash!");
+
+    
 
     loop{
 
