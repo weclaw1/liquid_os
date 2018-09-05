@@ -1,16 +1,18 @@
 #![feature(lang_items)]
-#![feature(const_size_of)]
 #![feature(alloc)]
 #![feature(allocator_api)]
-#![feature(global_allocator)]
 #![feature(const_fn)]
-#![feature(unique)]
 #![feature(ptr_internals)]
 #![feature(abi_x86_interrupt)]
-#![feature(panic_implementation)]
+#![feature(panic_handler)]
+#![feature(alloc_error_handler)]
 #![feature(asm)]
 #![no_std]
-#![no_main]
+#![cfg_attr(not(test), no_main)]
+#![cfg_attr(test, allow(dead_code, unused_macros, unused_imports, unused_attributes))]
+
+#[cfg(test)]
+extern crate std;
 
 extern crate spin;
 
@@ -19,6 +21,7 @@ extern crate x86_64;
 extern crate volatile;
 extern crate bit_field;
 extern crate linked_list_allocator;
+extern crate uart_16550;
 
 #[macro_use]
 extern crate alloc;
@@ -40,19 +43,20 @@ mod drivers;
 mod memory;
 
 use memory::heap_allocator;
-use memory::heap_allocator::{HEAP_START, HEAP_SIZE};
 
 use core::panic::PanicInfo;
 
 mod interrupts;
 
+#[cfg(not(test))]
 #[global_allocator]
 static ALLOCATOR: heap_allocator::Allocator = heap_allocator::Allocator;
 
+#[cfg(not(test))]
 #[no_mangle]
 pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
     let boot_info = unsafe{ multiboot2::load(multiboot_information_address) };
-    let memory_map_tag = boot_info.memory_map_tag().expect("Memory map tag required");
+    let _memory_map_tag = boot_info.memory_map_tag().expect("Memory map tag required");
 
     //memory::print_memory_areas(memory_map_tag);
 
@@ -93,6 +97,7 @@ pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
     //stack_overflow();
 
     println!("It did not crash!");
+    serial_println!("Hello Host{}", "!");
 
     
 
@@ -101,9 +106,10 @@ pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
     }
 }
 
-#[panic_implementation]
+#[cfg(not(test))]
+#[panic_handler]
 #[no_mangle]
-extern "C" fn panic(info: &PanicInfo) -> ! {
+pub extern "C" fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
     loop{}
 }

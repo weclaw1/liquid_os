@@ -10,6 +10,7 @@ On Ubuntu you can run:
 sudo apt-get install nasm xorriso qemu build-essential mtools
 
 In project folder run
+rustup install nightly
 rustup override add nightly
 rustup component add rust-src
 rustup update nightly

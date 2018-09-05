@@ -10,8 +10,8 @@ use self::paging::{PAGE_SIZE, PhysicalAddress, Page, ActivePageTable};
 
 use self::heap_allocator::{HEAP_START, HEAP_SIZE};
 
-use x86_64::registers::msr::{IA32_EFER, rdmsr, wrmsr};
-use x86_64::registers::control_regs::{cr0, cr0_write, Cr0};
+use x86_64::registers::model_specific::{Efer, EferFlags};
+use x86_64::registers::control::{Cr0, Cr0Flags};
 
 use spin::Mutex;
 
@@ -118,15 +118,19 @@ impl Iterator for FrameIter {
 }
 
 pub fn enable_nxe_bit() {
-    let nxe_bit = 1 << 11;
-    unsafe {
-        let efer = rdmsr(IA32_EFER);
-        wrmsr(IA32_EFER, efer | nxe_bit);
+    unsafe { 
+        let mut flags = Efer::read();
+        flags.insert(EferFlags::NO_EXECUTE_ENABLE);
+        Efer::write(flags); 
     }
 }
 
 pub fn enable_write_protect_bit() {
-    unsafe { cr0_write(cr0() | Cr0::WRITE_PROTECT) };
+    unsafe { 
+        let mut flags = Cr0::read();
+        flags.insert(Cr0Flags::WRITE_PROTECT);
+        Cr0::write(flags); 
+    }
 }
 
 pub fn print_memory_areas(memory_map_tag: &MemoryMapTag) {

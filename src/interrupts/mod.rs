@@ -2,9 +2,8 @@ mod gdt;
 
 use x86_64;
 
-use x86_64::VirtualAddress;
 use x86_64::structures::idt::ExceptionStackFrame;
-use x86_64::structures::idt::Idt;
+use x86_64::structures::idt::InterruptDescriptorTable;
 use x86_64::structures::tss::TaskStateSegment;
 use x86_64::structures::gdt::SegmentSelector;
 
@@ -23,15 +22,15 @@ static TSS: Once<TaskStateSegment> = Once::new();
 static GDT: Once<gdt::Gdt> = Once::new();
 
 lazy_static! {
-    static ref IDT: Idt = {
-        let mut idt = Idt::new();
+    static ref IDT: InterruptDescriptorTable = {
+        let mut idt = InterruptDescriptorTable::new();
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         unsafe {
             idt.double_fault.set_handler_fn(double_fault_handler)
                             .set_stack_index(DOUBLE_FAULT_IST_INDEX as u16);
         }
-        idt.interrupts[0].set_handler_fn(timer_handler);
-        idt.interrupts[1].set_handler_fn(keyboard_handler);
+        idt[32].set_handler_fn(timer_handler);
+        idt[33].set_handler_fn(keyboard_handler);
         idt
     };
 }
@@ -42,8 +41,8 @@ pub fn init(memory_controller: &mut MemoryController) {
 
     let tss = TSS.call_once(|| {
         let mut tss = TaskStateSegment::new();
-        tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX] = VirtualAddress(
-            double_fault_stack.top());
+        tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX] = x86_64::VirtAddr::new(
+            double_fault_stack.top() as u64);
         tss
     });
 
@@ -81,12 +80,12 @@ fn double_fault_handler(stack_frame: &mut ExceptionStackFrame, _error_code: u64)
 }
 
 extern "x86-interrupt" 
-fn timer_handler(stack_frame: &mut ExceptionStackFrame) {
+fn timer_handler(_stack_frame: &mut ExceptionStackFrame) {
     drivers::pic::MASTER.send_eoi();
 }
 
 extern "x86-interrupt" 
-fn keyboard_handler(stack_frame: &mut ExceptionStackFrame) {
+fn keyboard_handler(_stack_frame: &mut ExceptionStackFrame) {
     if let Some(c) = drivers::keyboard::read_char() {
         print!("{}", c);
     }

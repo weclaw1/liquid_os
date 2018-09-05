@@ -112,3 +112,11 @@ impl fmt::Write for VgaConsole {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn foo() {}
+}

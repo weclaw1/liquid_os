@@ -36,8 +36,9 @@ unsafe impl GlobalAlloc for Allocator {
 
 }
 
-#[lang = "oom"]
+#[cfg(not(test))]
+#[alloc_error_handler]
 #[no_mangle]
-pub extern fn oom() -> ! {
+pub extern "C" fn oom(_: ::core::alloc::Layout) -> ! {
     panic!("kernel memory allocation failed");
 }

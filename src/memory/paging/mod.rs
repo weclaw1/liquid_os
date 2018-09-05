@@ -11,7 +11,8 @@ use multiboot2::BootInformation;
 
 use x86_64;
 use x86_64::instructions::tlb;
-use x86_64::registers::control_regs;
+use x86_64::registers::control::{Cr3, Cr3Flags};
+use x86_64::structures::paging::PhysFrame;
 
 use self::mapper::Mapper;
 use core::ops::{Deref, DerefMut, Add};
@@ -122,7 +123,7 @@ impl ActivePageTable {
         where F: FnOnce(&mut Mapper)
     {
         {
-            let backup = Frame::containing_address(control_regs::cr3().0 as usize);
+            let backup = Frame::containing_address(Cr3::read().0.start_address().as_u64() as usize);
 
             // map temporary_page to current p4 table
             let p4_table = temporary_page.map_table_frame(backup.clone(), self);
@@ -146,17 +147,17 @@ impl ActivePageTable {
     pub fn switch(&mut self, new_table: InactivePageTable) -> InactivePageTable {
         let old_table = InactivePageTable {
             p4_frame: Frame::containing_address(
-                control_regs::cr3().0 as usize
+                Cr3::read().0.start_address().as_u64() as usize
             ),
         };
         unsafe {
-            control_regs::cr3_write(x86_64::PhysicalAddress(new_table.p4_frame.start_address() as u64));
+            Cr3::write(PhysFrame::containing_address(x86_64::PhysAddr::new(new_table.p4_frame.start_address() as u64)), Cr3Flags::empty());
         }
         old_table
     }
 
     pub fn flush(&mut self, page: Page) {
-        tlb::flush(x86_64::VirtualAddress(page.start_address()));
+        tlb::flush(x86_64::VirtAddr::new(page.start_address() as u64));
     }
 
     pub fn flush_all(&mut self) {
