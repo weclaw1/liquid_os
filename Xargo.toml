@@ -1,5 +1,0 @@
-[target.x86_64-liquid_os.dependencies]
-alloc = {}
-
-[target.x86_64-liquid_os.lib]
-crate-type = ["staticlib"]

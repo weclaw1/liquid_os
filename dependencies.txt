@@ -1,18 +1,19 @@
 Dependencies:
+-rust nightly
 -nasm
--ld
+-lld
 -grub-mkrescue
 -xorriso
 -qemu-system-x86_64
 -cargo
 
 On Ubuntu you can run:
-sudo apt-get install nasm xorriso qemu build-essential mtools
+sudo apt-get install nasm xorriso qemu build-essential mtools lld
 
 In project folder run
 rustup install nightly
 rustup override add nightly
 rustup component add rust-src
 rustup update nightly
-cargo install xargo
+cargo install cargo-xbuild
 cargo install just

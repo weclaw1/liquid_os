@@ -14,13 +14,11 @@ asm_src_dir = "src/arch/" + arch + "/boot/"
 current_dir = `pwd`
 
 clean:
-	xargo clean
+	cargo clean
 	rm -r build
 
 run: iso
-	qemu-system-x86_64 -cdrom {{iso}} -serial mon:stdio -device isa-debug-exit,iobase=0xf4,iosize=0x04 \
-
-
+	qemu-system-x86_64 -cdrom {{iso}} -serial mon:stdio
 
 iso: kernel
 	mkdir -p build/isofiles/boot/grub
@@ -32,6 +30,6 @@ iso: kernel
 kernel:
 	mkdir -p {{asm_build_dir}}
 	nasm {{asm_src_dir}}boot.asm -felf64 -o {{asm_build_dir}}boot.o
-	RUST_TARGET_PATH={{current_dir}} xargo build --target {{target}}
+	RUST_TARGET_PATH={{current_dir}} cargo xbuild --target {{target}}
 	ld -n --gc-sections -T {{linker_script}} -o {{kernel}} {{assembly_object_file}} {{rust_os}}
 	

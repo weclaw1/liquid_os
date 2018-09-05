@@ -32,9 +32,6 @@ extern crate bitflags;
 #[macro_use]
 extern crate lazy_static;
 
-/// External functions
-pub mod externs;
-
 /// Drivers
 #[macro_use]
 mod drivers;
@@ -98,8 +95,6 @@ pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
 
     println!("It did not crash!");
     serial_println!("Hello Host{}", "!");
-
-    
 
     loop{
 
