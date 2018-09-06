@@ -4,13 +4,14 @@ rust:
   - nightly
 
 install:
-  - which xargo || cargo install xargo
+  - which cargo-xbuild || cargo install cargo-xbuild
   - which just || cargo install just
   - rustup component add rust-src
 
 script:
   - just kernel
   - just iso
+  - cargo test
 
 addons:
   apt:
@@ -20,3 +21,4 @@ addons:
       - qemu
       - build-essential
       - mtools
+      - lld
