@@ -20,7 +20,7 @@ extern crate multiboot2;
 extern crate x86_64;
 extern crate volatile;
 extern crate bit_field;
-extern crate linked_list_allocator;
+extern crate slab_allocator;
 extern crate uart_16550;
 
 #[macro_use]

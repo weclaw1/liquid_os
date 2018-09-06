@@ -13,7 +13,6 @@ use x86_64::instructions::tables::load_tss;
 use spin::Once;
 
 use memory::MemoryController;
-#[macro_use]
 use drivers;
 
 const DOUBLE_FAULT_IST_INDEX: usize = 0;
@@ -65,7 +64,7 @@ pub fn init(memory_controller: &mut MemoryController) {
         load_tss(tss_selector);
     }
     IDT.load();
-    unsafe{x86_64::instructions::interrupts::enable()};
+    x86_64::instructions::interrupts::enable();
 }
 
 extern "x86-interrupt" 

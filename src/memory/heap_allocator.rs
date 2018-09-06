@@ -1,7 +1,7 @@
 use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::NonNull;
 use spin::Mutex;
-use linked_list_allocator::Heap;
+use slab_allocator::Heap;
 
 pub const HEAP_START: usize = 0o_000_001_000_000_0000;
 pub const HEAP_SIZE: usize = 80 * 4096; // 320 KiB
@@ -18,7 +18,7 @@ pub struct Allocator;
 unsafe impl GlobalAlloc for Allocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         if let Some(ref mut heap) = *HEAP.lock() {
-            heap.allocate_first_fit(layout).ok().map_or(0 as *mut u8, |allocation| {
+            heap.allocate(layout).ok().map_or(0 as *mut u8, |allocation| {
                 allocation.as_ptr()
             })
         } else {
